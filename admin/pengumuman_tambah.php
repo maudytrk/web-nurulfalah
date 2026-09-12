@@ -149,21 +149,21 @@ require_once '../koneksi.php';
                                         <label class="font-weight-bold text-dark">Tanggal Publikasi <span class="text-danger">*</span></label>
                                         <input type="date" name="tanggal" class="form-control" value="<?= date('Y-m-d'); ?>" required>
                                     </div>
-                                    <div class="col-md-6 form-group">
+                                     <div class="col-md-6 form-group">
                                         <label class="font-weight-bold text-dark">Target Unit / Akses <span class="text-danger">*</span></label>
-                                        <select name="unit_akses" class="form-control" required>
+                                        <select name="target_unit" class="form-control" required>
                                             <option value="">-- Pilih Target Unit --</option>
-                                            <option value="all">Semua Unit (Umum)</option>
-                                            <option value="ra">RA (Raudhatul Athfal)</option>
-                                            <option value="mi">MI (Madrasah Ibtidaiyah)</option>
-                                            <option value="smpi">SMPI (SMP Islam)</option>
+                                            <option value="Yayasan">Yayasan / Semua Unit</option>
+                                            <option value="RA">RA (Raudhatul Athfal)</option>
+                                            <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                                            <option value="SMPI">SMPI (SMP Islam)</option>
                                         </select>
                                     </div>
                                 </div>
 
                                 <div class="form-group">
                                     <label class="font-weight-bold text-dark">Isi Teks Pengumuman <span class="text-danger">*</span></label>
-                                    <textarea name="isi" class="form-control" rows="6" placeholder="Tuliskan detail informasi pengumuman secara rinci..." required></textarea>
+                                    <textarea name="isi_pengumuman" class="form-control" rows="6" placeholder="Tuliskan detail informasi pengumuman secara rinci..." required></textarea>
                                 </div>
 
                                 <div class="form-group">

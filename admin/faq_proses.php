@@ -32,21 +32,19 @@ switch ($action) {
     case 'tambah':
         $pertanyaan = trim($_POST['pertanyaan'] ?? '');
         $jawaban    = trim($_POST['jawaban'] ?? '');
-        $unit_akses = trim($_POST['unit_akses'] ?? 'all');
         $urutan     = (int)($_POST['urutan'] ?? 1);
 
-        if (empty($pertanyaan) || empty($jawaban) || empty($unit_akses)) {
-            $_SESSION['error'] = "Pertanyaan, Jawaban, dan Target Unit wajib diisi!";
+        if (empty($pertanyaan) || empty($jawaban)) {
+            $_SESSION['error'] = "Pertanyaan dan Jawaban wajib diisi!";
             header("Location: faq.php");
             exit;
         }
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO faq (pertanyaan, jawaban, unit_akses, urutan, created_at) VALUES (:pertanyaan, :jawaban, :unit_akses, :urutan, NOW())");
+            $stmt = $pdo->prepare("INSERT INTO faq_ppdb (pertanyaan, jawaban, urutan) VALUES (:pertanyaan, :jawaban, :urutan)");
             $stmt->execute([
                 ':pertanyaan' => $pertanyaan,
                 ':jawaban'    => $jawaban,
-                ':unit_akses'  => $unit_akses,
                 ':urutan'     => $urutan
             ]);
 
@@ -65,21 +63,19 @@ switch ($action) {
         $id         = (int)($_POST['id'] ?? 0);
         $pertanyaan = trim($_POST['pertanyaan'] ?? '');
         $jawaban    = trim($_POST['jawaban'] ?? '');
-        $unit_akses = trim($_POST['unit_akses'] ?? 'all');
         $urutan     = (int)($_POST['urutan'] ?? 1);
 
-        if ($id <= 0 || empty($pertanyaan) || empty($jawaban) || empty($unit_akses)) {
+        if ($id <= 0 || empty($pertanyaan) || empty($jawaban)) {
             $_SESSION['error'] = "Data tidak valid atau kolom wajib masih kosong!";
             header("Location: faq.php");
             exit;
         }
 
         try {
-            $stmt = $pdo->prepare("UPDATE faq SET pertanyaan = :pertanyaan, jawaban = :jawaban, unit_akses = :unit_akses, urutan = :urutan WHERE id = :id");
+            $stmt = $pdo->prepare("UPDATE faq_ppdb SET pertanyaan = :pertanyaan, jawaban = :jawaban, urutan = :urutan WHERE id = :id");
             $stmt->execute([
                 ':pertanyaan' => $pertanyaan,
                 ':jawaban'    => $jawaban,
-                ':unit_akses'  => $unit_akses,
                 ':urutan'     => $urutan,
                 ':id'          => $id
             ]);
@@ -100,7 +96,7 @@ switch ($action) {
 
         if ($id > 0) {
             try {
-                $stmt = $pdo->prepare("DELETE FROM faq WHERE id = :id");
+                $stmt = $pdo->prepare("DELETE FROM faq_ppdb WHERE id = :id");
                 $stmt->execute([':id' => $id]);
 
                 $_SESSION['success'] = "FAQ berhasil dihapus dari sistem!";

@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // 3. Panggil Koneksi Database
 require_once '../koneksi.php';
 
-$upload_dir = '../uploads/berkas/';
+$upload_dir = '../uploads/';
 
 // Helper Function Upload Berkas PDF
 function uploadPdfBerkas($file, $target_dir) {
@@ -67,12 +67,11 @@ switch ($action) {
     // ACTION 1: TAMBAH BERKAS (INSERT)
     // ==========================================
     case 'tambah':
-        $nama_berkas = trim($_POST['nama_berkas'] ?? '');
-        $kategori    = trim($_POST['kategori'] ?? 'formulir');
-        $unit_akses  = trim($_POST['unit_akses'] ?? 'all');
-        $keterangan  = trim($_POST['keterangan'] ?? '');
+        $nama_berkas  = trim($_POST['nama_berkas'] ?? '');
+        $jenis_berkas = trim($_POST['jenis_berkas'] ?? 'formulir');
+        $target_unit  = trim($_POST['target_unit'] ?? 'RA');
 
-        if (empty($nama_berkas) || empty($unit_akses) || !isset($_FILES['file_pdf']) || $_FILES['file_pdf']['error'] !== UPLOAD_ERR_OK) {
+        if (empty($nama_berkas) || empty($target_unit) || !isset($_FILES['file_pdf']) || $_FILES['file_pdf']['error'] !== UPLOAD_ERR_OK) {
             $_SESSION['error'] = "Nama Berkas, Target Unit, dan Berkas PDF wajib diisi!";
             header("Location: berkas_ppdb.php");
             exit;
@@ -89,13 +88,12 @@ switch ($action) {
         $nama_file = $upload_result['filename'];
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO berkas_ppdb (nama_berkas, kategori, unit_akses, keterangan, file_pdf, created_at) VALUES (:nama_berkas, :kategori, :unit_akses, :keterangan, :file_pdf, NOW())");
+            $stmt = $pdo->prepare("INSERT INTO berkas_ppdb (nama_berkas, jenis_berkas, target_unit, nama_file, tanggal_upload) VALUES (:nama_berkas, :jenis_berkas, :target_unit, :nama_file, CURDATE())");
             $stmt->execute([
-                ':nama_berkas' => $nama_berkas,
-                ':kategori'    => $kategori,
-                ':unit_akses'  => $unit_akses,
-                ':keterangan'  => $keterangan,
-                ':file_pdf'    => $nama_file
+                ':nama_berkas'  => $nama_berkas,
+                ':jenis_berkas' => $jenis_berkas,
+                ':target_unit'  => $target_unit,
+                ':nama_file'    => $nama_file
             ]);
 
             $_SESSION['success'] = "Berkas PPDB baru berhasil diunggah!";
@@ -110,13 +108,12 @@ switch ($action) {
     // ACTION 2: EDIT BERKAS (UPDATE)
     // ==========================================
     case 'edit':
-        $id          = (int)($_POST['id'] ?? 0);
-        $nama_berkas = trim($_POST['nama_berkas'] ?? '');
-        $kategori    = trim($_POST['kategori'] ?? 'formulir');
-        $unit_akses  = trim($_POST['unit_akses'] ?? 'all');
-        $keterangan  = trim($_POST['keterangan'] ?? '');
+        $id           = (int)($_POST['id'] ?? 0);
+        $nama_berkas  = trim($_POST['nama_berkas'] ?? '');
+        $jenis_berkas = trim($_POST['jenis_berkas'] ?? 'formulir');
+        $target_unit  = trim($_POST['target_unit'] ?? 'RA');
 
-        if ($id <= 0 || empty($nama_berkas) || empty($unit_akses)) {
+        if ($id <= 0 || empty($nama_berkas) || empty($target_unit)) {
             $_SESSION['error'] = "Data tidak valid atau kolom wajib masih kosong!";
             header("Location: berkas_ppdb.php");
             exit;
@@ -124,7 +121,7 @@ switch ($action) {
 
         try {
             // Cek file PDF lama
-            $stmt_old = $pdo->prepare("SELECT file_pdf FROM berkas_ppdb WHERE id = :id");
+            $stmt_old = $pdo->prepare("SELECT nama_file FROM berkas_ppdb WHERE id = :id");
             $stmt_old->execute([':id' => $id]);
             $old_data = $stmt_old->fetch();
 
@@ -134,7 +131,7 @@ switch ($action) {
                 exit;
             }
 
-            $nama_file = $old_data['file_pdf'];
+            $nama_file = $old_data['nama_file'];
 
             // Jika ada file PDF baru yang diunggah
             if (isset($_FILES['file_pdf']) && $_FILES['file_pdf']['error'] === UPLOAD_ERR_OK) {
@@ -154,14 +151,13 @@ switch ($action) {
                 $nama_file = $upload_result['filename'];
             }
 
-            $stmt_update = $pdo->prepare("UPDATE berkas_ppdb SET nama_berkas = :nama_berkas, kategori = :kategori, unit_akses = :unit_akses, keterangan = :keterangan, file_pdf = :file_pdf WHERE id = :id");
+            $stmt_update = $pdo->prepare("UPDATE berkas_ppdb SET nama_berkas = :nama_berkas, jenis_berkas = :jenis_berkas, target_unit = :target_unit, nama_file = :nama_file WHERE id = :id");
             $stmt_update->execute([
-                ':nama_berkas' => $nama_berkas,
-                ':kategori'    => $kategori,
-                ':unit_akses'  => $unit_akses,
-                ':keterangan'  => $keterangan,
-                ':file_pdf'    => $nama_file,
-                ':id'          => $id
+                ':nama_berkas'  => $nama_berkas,
+                ':jenis_berkas' => $jenis_berkas,
+                ':target_unit'  => $target_unit,
+                ':nama_file'    => $nama_file,
+                ':id'           => $id
             ]);
 
             $_SESSION['success'] = "Data berkas PPDB berhasil diperbarui!";
@@ -180,14 +176,14 @@ switch ($action) {
 
         if ($id > 0) {
             try {
-                $stmt = $pdo->prepare("SELECT file_pdf FROM berkas_ppdb WHERE id = :id");
+                $stmt = $pdo->prepare("SELECT nama_file FROM berkas_ppdb WHERE id = :id");
                 $stmt->execute([':id' => $id]);
                 $data = $stmt->fetch();
 
                 if ($data) {
                     // Hapus file PDF dari folder penyimpanan
-                    if (!empty($data['file_pdf']) && file_exists($upload_dir . $data['file_pdf'])) {
-                        unlink($upload_dir . $data['file_pdf']);
+                    if (!empty($data['nama_file']) && file_exists($upload_dir . $data['nama_file'])) {
+                        unlink($upload_dir . $data['nama_file']);
                     }
 
                     // Hapus baris dari database

@@ -69,13 +69,12 @@ switch ($action) {
     // ACTION 1: TAMBAH FOTO (INSERT)
     // ==========================================
     case 'tambah':
-        $judul      = trim($_POST['judul'] ?? '');
-        $kategori   = trim($_POST['kategori'] ?? 'kegiatan');
-        $unit_akses = trim($_POST['unit_akses'] ?? 'all');
-        $keterangan = trim($_POST['keterangan'] ?? '');
+        $judul_kegiatan = trim($_POST['judul_kegiatan'] ?? '');
+        $jenis_ekskul   = trim($_POST['jenis_ekskul'] ?? '');
+        $target_unit    = trim($_POST['target_unit'] ?? 'RA');
 
-        if (empty($judul) || empty($unit_akses) || !isset($_FILES['file_gambar']) || $_FILES['file_gambar']['error'] !== UPLOAD_ERR_OK) {
-            $_SESSION['error'] = "Judul, Target Unit, dan Berkas Gambar wajib diisi!";
+        if (empty($judul_kegiatan) || empty($target_unit) || !isset($_FILES['file_gambar']) || $_FILES['file_gambar']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['error'] = "Judul Kegiatan, Target Unit, dan Berkas Gambar wajib diisi!";
             header("Location: galeri.php");
             exit;
         }
@@ -91,13 +90,12 @@ switch ($action) {
         $nama_file = $upload_result['filename'];
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO galeri (judul, kategori, unit_akses, keterangan, file_gambar, created_at) VALUES (:judul, :kategori, :unit_akses, :keterangan, :file_gambar, NOW())");
+            $stmt = $pdo->prepare("INSERT INTO galeri (judul_kegiatan, nama_file_foto, jenis_ekskul, target_unit, tanggal_unggah) VALUES (:judul_kegiatan, :nama_file_foto, :jenis_ekskul, :target_unit, NOW())");
             $stmt->execute([
-                ':judul'       => $judul,
-                ':kategori'    => $kategori,
-                ':unit_akses'  => $unit_akses,
-                ':keterangan'  => $keterangan,
-                ':file_gambar' => $nama_file
+                ':judul_kegiatan' => $judul_kegiatan,
+                ':nama_file_foto' => $nama_file,
+                ':jenis_ekskul'   => $jenis_ekskul,
+                ':target_unit'    => $target_unit
             ]);
 
             $_SESSION['success'] = "Foto galeri baru berhasil diunggah!";
@@ -112,13 +110,12 @@ switch ($action) {
     // ACTION 2: EDIT FOTO (UPDATE)
     // ==========================================
     case 'edit':
-        $id         = (int)($_POST['id'] ?? 0);
-        $judul      = trim($_POST['judul'] ?? '');
-        $kategori   = trim($_POST['kategori'] ?? 'kegiatan');
-        $unit_akses = trim($_POST['unit_akses'] ?? 'all');
-        $keterangan = trim($_POST['keterangan'] ?? '');
+        $id             = (int)($_POST['id'] ?? 0);
+        $judul_kegiatan = trim($_POST['judul_kegiatan'] ?? '');
+        $jenis_ekskul   = trim($_POST['jenis_ekskul'] ?? '');
+        $target_unit    = trim($_POST['target_unit'] ?? 'RA');
 
-        if ($id <= 0 || empty($judul) || empty($unit_akses)) {
+        if ($id <= 0 || empty($judul_kegiatan) || empty($target_unit)) {
             $_SESSION['error'] = "Data tidak valid atau kolom wajib masih kosong!";
             header("Location: galeri.php");
             exit;
@@ -126,7 +123,7 @@ switch ($action) {
 
         try {
             // Ambil data lama
-            $stmt_old = $pdo->prepare("SELECT file_gambar FROM galeri WHERE id = :id");
+            $stmt_old = $pdo->prepare("SELECT nama_file_foto FROM galeri WHERE id = :id");
             $stmt_old->execute([':id' => $id]);
             $old_data = $stmt_old->fetch();
 
@@ -136,7 +133,7 @@ switch ($action) {
                 exit;
             }
 
-            $nama_file = $old_data['file_gambar'];
+            $nama_file = $old_data['nama_file_foto'];
 
             // Jika ada gambar baru yang diunggah
             if (isset($_FILES['file_gambar']) && $_FILES['file_gambar']['error'] === UPLOAD_ERR_OK) {
@@ -156,14 +153,13 @@ switch ($action) {
                 $nama_file = $upload_result['filename'];
             }
 
-            $stmt_update = $pdo->prepare("UPDATE galeri SET judul = :judul, kategori = :kategori, unit_akses = :unit_akses, keterangan = :keterangan, file_gambar = :file_gambar WHERE id = :id");
+            $stmt_update = $pdo->prepare("UPDATE galeri SET judul_kegiatan = :judul_kegiatan, nama_file_foto = :nama_file_foto, jenis_ekskul = :jenis_ekskul, target_unit = :target_unit WHERE id = :id");
             $stmt_update->execute([
-                ':judul'       => $judul,
-                ':kategori'    => $kategori,
-                ':unit_akses'  => $unit_akses,
-                ':keterangan'  => $keterangan,
-                ':file_gambar' => $nama_file,
-                ':id'          => $id
+                ':judul_kegiatan' => $judul_kegiatan,
+                ':nama_file_foto' => $nama_file,
+                ':jenis_ekskul'   => $jenis_ekskul,
+                ':target_unit'    => $target_unit,
+                ':id'              => $id
             ]);
 
             $_SESSION['success'] = "Data galeri foto berhasil diperbarui!";
@@ -182,14 +178,14 @@ switch ($action) {
 
         if ($id > 0) {
             try {
-                $stmt = $pdo->prepare("SELECT file_gambar FROM galeri WHERE id = :id");
+                $stmt = $pdo->prepare("SELECT nama_file_foto FROM galeri WHERE id = :id");
                 $stmt->execute([':id' => $id]);
                 $data = $stmt->fetch();
 
                 if ($data) {
                     // Hapus gambar fisik dari direktori server
-                    if (!empty($data['file_gambar']) && file_exists($upload_dir . $data['file_gambar'])) {
-                        unlink($upload_dir . $data['file_gambar']);
+                    if (!empty($data['nama_file_foto']) && file_exists($upload_dir . $data['nama_file_foto'])) {
+                        unlink($upload_dir . $data['nama_file_foto']);
                     }
 
                     // Hapus baris dari database

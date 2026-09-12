@@ -17,15 +17,15 @@ if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
 require_once '../koneksi.php';
 
 // 3. Ambil Filter Unit jika ada
-$unit_filter = isset($_GET['unit']) ? trim($_GET['unit']) : 'all';
+$unit_filter = isset($_GET['unit']) ? strtolower(trim($_GET['unit'])) : 'all';
 
 // 4. Query Data Berkas PPDB
 try {
     if ($unit_filter !== 'all' && in_array($unit_filter, ['ra', 'mi', 'smpi'])) {
-        $stmt = $pdo->prepare("SELECT * FROM berkas_ppdb WHERE unit_akses = :unit ORDER BY created_at DESC");
-        $stmt->execute([':unit' => $unit_filter]);
+        $stmt = $pdo->prepare("SELECT * FROM berkas_ppdb WHERE target_unit = :unit ORDER BY tanggal_upload DESC");
+        $stmt->execute([':unit' => strtoupper($unit_filter)]);
     } else {
-        $stmt = $pdo->query("SELECT * FROM berkas_ppdb ORDER BY created_at DESC");
+        $stmt = $pdo->query("SELECT * FROM berkas_ppdb ORDER BY tanggal_upload DESC");
     }
     $daftar_berkas = $stmt->fetchAll();
 } catch (PDOException $e) {
@@ -193,8 +193,8 @@ try {
                                         <tr class="bg-light">
                                             <th width="5%" class="text-center">No</th>
                                             <th>Nama Berkas / Dokumen</th>
-                                            <th width="12%">Kategori</th>
-                                            <th width="10%">Target Unit</th>
+                                            <th width="15%">Jenis Berkas</th>
+                                            <th width="12%">Target Unit</th>
                                             <th width="12%" class="text-center">File PDF</th>
                                             <th width="15%">Tanggal Unggah</th>
                                             <th width="13%" class="text-center">Aksi</th>
@@ -206,38 +206,36 @@ try {
                                                 <td class="text-center align-middle"><?= $no++; ?></td>
                                                 <td class="align-middle font-weight-bold text-dark">
                                                     <?= htmlspecialchars($row['nama_berkas']); ?>
-                                                    <?php if (!empty($row['keterangan'])): ?>
-                                                        <small class="d-block text-muted font-weight-normal mt-1"><?= htmlspecialchars(substr($row['keterangan'], 0, 80)) . (strlen($row['keterangan']) > 80 ? '...' : ''); ?></small>
-                                                    <?php endif; ?>
                                                 </td>
                                                 <td class="align-middle">
-                                                    <span class="badge badge-secondary p-2"><?= strtoupper(htmlspecialchars($row['kategori'] ?? 'formulir')); ?></span>
+                                                    <span class="badge badge-secondary p-2"><?= strtoupper(htmlspecialchars($row['jenis_berkas'])); ?></span>
                                                 </td>
                                                 <td class="align-middle">
-                                                    <span class="badge badge-info p-2"><?= strtoupper(htmlspecialchars($row['unit_akses'])); ?></span>
+                                                    <span class="badge badge-info p-2"><?= htmlspecialchars($row['target_unit']); ?></span>
                                                 </td>
                                                 <td class="text-center align-middle">
                                                     <?php 
-                                                        $pdf_path = "../uploads/berkas/" . htmlspecialchars($row['file_pdf']);
-                                                        if (!empty($row['file_pdf']) && file_exists($pdf_path)): 
+                                                        $pdf_path = "../uploads/" . htmlspecialchars($row['nama_file']);
+                                                        if (!empty($row['nama_file']) && file_exists($pdf_path)): 
                                                     ?>
                                                         <a href="<?= $pdf_path; ?>" target="_blank" class="btn btn-sm btn-outline-danger">
                                                             <i class="fas fa-file-pdf mr-1"></i> Unduh PDF
                                                         </a>
                                                     <?php else: ?>
-                                                        <span class="text-muted font-italic" style="font-size: 0.8rem;">File Tidak Ada</span>
+                                                        <a href="../download.php?file=<?= urlencode($row['nama_file']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                            <i class="fas fa-download mr-1"></i> Unduh
+                                                        </a>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="align-middle"><?= date('d M Y, H:i', strtotime($row['created_at'])); ?></td>
+                                                <td class="align-middle"><?= date('d M Y', strtotime($row['tanggal_upload'])); ?></td>
                                                 <td class="text-center align-middle">
                                                     <!-- Tombol Edit Modal -->
                                                     <button class="btn btn-warning btn-sm btn-edit" 
                                                             data-id="<?= $row['id']; ?>"
                                                             data-nama="<?= htmlspecialchars($row['nama_berkas']); ?>"
-                                                            data-kategori="<?= htmlspecialchars($row['kategori'] ?? 'formulir'); ?>"
-                                                            data-unit="<?= htmlspecialchars($row['unit_akses']); ?>"
-                                                            data-keterangan="<?= htmlspecialchars($row['keterangan'] ?? ''); ?>"
-                                                            data-file="<?= htmlspecialchars($row['file_pdf']); ?>">
+                                                            data-jenis="<?= htmlspecialchars($row['jenis_berkas']); ?>"
+                                                            data-unit="<?= htmlspecialchars($row['target_unit']); ?>"
+                                                            data-file="<?= htmlspecialchars($row['nama_file']); ?>">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </button>
                                                     
@@ -292,28 +290,20 @@ try {
                         
                         <div class="row">
                             <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Kategori Dokumen <span class="text-danger">*</span></label>
-                                <select name="kategori" class="form-control" required>
+                                <label class="font-weight-bold">Jenis Berkas <span class="text-danger">*</span></label>
+                                <select name="jenis_berkas" class="form-control" required>
                                     <option value="formulir">Formulir Pendaftaran</option>
                                     <option value="brosur">Brosur PPDB</option>
-                                    <option value="panduan">Panduan / Syarat PPDB</option>
-                                    <option value="rincian_biaya">Rincian Biaya</option>
                                 </select>
                             </div>
                             <div class="col-md-6 form-group">
                                 <label class="font-weight-bold">Target Unit <span class="text-danger">*</span></label>
-                                <select name="unit_akses" class="form-control" required>
-                                    <option value="all">Semua Unit (Umum)</option>
-                                    <option value="ra">RA (Raudhatul Athfal)</option>
-                                    <option value="mi">MI (Madrasah Ibtidaiyah)</option>
-                                    <option value="smpi">SMPI (SMP Islam)</option>
+                                <select name="target_unit" class="form-control" required>
+                                    <option value="RA">RA (Raudhatul Athfal)</option>
+                                    <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                                    <option value="SMPI">SMPI (SMP Islam)</option>
                                 </select>
                             </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="font-weight-bold">Keterangan / Deskripsi Singkat</label>
-                            <textarea name="keterangan" class="form-control" rows="3" placeholder="Tuliskan petunjuk atau keterangan singkat terkait penggunaan dokumen ini..."></textarea>
                         </div>
 
                         <div class="form-group">
@@ -353,28 +343,20 @@ try {
                         
                         <div class="row">
                             <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Kategori Dokumen <span class="text-danger">*</span></label>
-                                <select name="kategori" id="edit_kategori" class="form-control" required>
+                                <label class="font-weight-bold">Jenis Berkas <span class="text-danger">*</span></label>
+                                <select name="jenis_berkas" id="edit_jenis" class="form-control" required>
                                     <option value="formulir">Formulir Pendaftaran</option>
                                     <option value="brosur">Brosur PPDB</option>
-                                    <option value="panduan">Panduan / Syarat PPDB</option>
-                                    <option value="rincian_biaya">Rincian Biaya</option>
                                 </select>
                             </div>
                             <div class="col-md-6 form-group">
                                 <label class="font-weight-bold">Target Unit <span class="text-danger">*</span></label>
-                                <select name="unit_akses" id="edit_unit" class="form-control" required>
-                                    <option value="all">Semua Unit (Umum)</option>
-                                    <option value="ra">RA (Raudhatul Athfal)</option>
-                                    <option value="mi">MI (Madrasah Ibtidaiyah)</option>
-                                    <option value="smpi">SMPI (SMP Islam)</option>
+                                <select name="target_unit" id="edit_unit" class="form-control" required>
+                                    <option value="RA">RA (Raudhatul Athfal)</option>
+                                    <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                                    <option value="SMPI">SMPI (SMP Islam)</option>
                                 </select>
                             </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="font-weight-bold">Keterangan / Deskripsi Singkat</label>
-                            <textarea name="keterangan" id="edit_keterangan" class="form-control" rows="3"></textarea>
                         </div>
 
                         <div class="form-group">
@@ -432,18 +414,16 @@ try {
 
             // Populate Modal Edit
             $('.btn-edit').on('click', function() {
-                const id         = $(this).data('id');
-                const nama       = $(this).data('nama');
-                const kategori   = $(this).data('kategori');
-                const unit       = $(this).data('unit');
-                const keterangan = $(this).data('keterangan');
-                const file       = $(this).data('file');
+                const id    = $(this).data('id');
+                const nama  = $(this).data('nama');
+                const jenis = $(this).data('jenis');
+                const unit  = $(this).data('unit');
+                const file  = $(this).data('file');
 
                 $('#edit_id').val(id);
                 $('#edit_nama').val(nama);
-                $('#edit_kategori').val(kategori);
+                $('#edit_jenis').val(jenis);
                 $('#edit_unit').val(unit);
-                $('#edit_keterangan').val(keterangan);
 
                 if (file !== '') {
                     $('#info_pdf_lama').text('File PDF saat ini: ' + file);

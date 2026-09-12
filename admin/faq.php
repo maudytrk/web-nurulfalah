@@ -16,17 +16,9 @@ if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
 // 2. Panggil Koneksi Database
 require_once '../koneksi.php';
 
-// 3. Ambil Filter Unit jika ada
-$unit_filter = isset($_GET['unit']) ? trim($_GET['unit']) : 'all';
-
-// 4. Query Data FAQ
+// 3. Query Data FAQ
 try {
-    if ($unit_filter !== 'all' && in_array($unit_filter, ['ra', 'mi', 'smpi'])) {
-        $stmt = $pdo->prepare("SELECT * FROM faq WHERE unit_akses = :unit ORDER BY urutan ASC, created_at DESC");
-        $stmt->execute([':unit' => $unit_filter]);
-    } else {
-        $stmt = $pdo->query("SELECT * FROM faq ORDER BY urutan ASC, created_at DESC");
-    }
+    $stmt = $pdo->query("SELECT * FROM faq_ppdb ORDER BY urutan ASC, id ASC");
     $daftar_faq = $stmt->fetchAll();
 } catch (PDOException $e) {
     $daftar_faq = [];
@@ -167,19 +159,6 @@ try {
                         <?php unset($_SESSION['error']); ?>
                     <?php endif; ?>
 
-                    <!-- Filter Unit -->
-                    <div class="card shadow mb-4">
-                        <div class="card-body py-3">
-                            <div class="form-inline align-items-center">
-                                <label class="font-weight-bold mr-3 text-dark"><i class="fas fa-filter text-success mr-1"></i> Filter Unit:</label>
-                                <a href="faq.php?unit=all" class="btn btn-sm <?= $unit_filter === 'all' ? 'btn-success' : 'btn-outline-success'; ?> mr-2">Semua Unit</a>
-                                <a href="faq.php?unit=ra" class="btn btn-sm <?= $unit_filter === 'ra' ? 'btn-success' : 'btn-outline-success'; ?> mr-2">RA</a>
-                                <a href="faq.php?unit=mi" class="btn btn-sm <?= $unit_filter === 'mi' ? 'btn-success' : 'btn-outline-success'; ?> mr-2">MI</a>
-                                <a href="faq.php?unit=smpi" class="btn btn-sm <?= $unit_filter === 'smpi' ? 'btn-success' : 'btn-outline-success'; ?>">SMPI</a>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- DataTables FAQ -->
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 bg-white">
@@ -190,11 +169,10 @@ try {
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <thead>
                                         <tr class="bg-light">
-                                            <th width="5%" class="text-center">Urutan</th>
-                                            <th width="30%">Pertanyaan</th>
+                                            <th width="8%" class="text-center">Urutan</th>
+                                            <th width="35%">Pertanyaan</th>
                                             <th>Jawaban</th>
-                                            <th width="10%">Target Unit</th>
-                                            <th width="13%" class="text-center">Aksi</th>
+                                            <th width="15%" class="text-center">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -207,15 +185,11 @@ try {
                                                 <td class="align-middle">
                                                     <?= nl2br(htmlspecialchars($row['jawaban'])); ?>
                                                 </td>
-                                                <td class="align-middle">
-                                                    <span class="badge badge-info p-2"><?= strtoupper(htmlspecialchars($row['unit_akses'])); ?></span>
-                                                </td>
                                                 <td class="text-center align-middle">
                                                     <button class="btn btn-warning btn-sm btn-edit" 
                                                             data-id="<?= $row['id']; ?>"
                                                             data-pertanyaan="<?= htmlspecialchars($row['pertanyaan']); ?>"
                                                             data-jawaban="<?= htmlspecialchars($row['jawaban']); ?>"
-                                                            data-unit="<?= htmlspecialchars($row['unit_akses']); ?>"
                                                             data-urutan="<?= (int)$row['urutan']; ?>">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </button>
@@ -273,27 +247,16 @@ try {
                             <textarea name="jawaban" class="form-control" rows="4" placeholder="Tuliskan penjelasan jawaban secara lengkap..." required></textarea>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Target Unit <span class="text-danger">*</span></label>
-                                <select name="unit_akses" class="form-control" required>
-                                    <option value="all">Semua Unit (Umum)</option>
-                                    <option value="ra">RA (Raudhatul Athfal)</option>
-                                    <option value="mi">MI (Madrasah Ibtidaiyah)</option>
-                                    <option value="smpi">SMPI (SMP Islam)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Urutan Tampil</label>
-                                <input type="number" name="urutan" class="form-control" value="1" min="1">
-                                <small class="form-text text-muted">Angka kecil tampil paling atas.</small>
-                            </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Urutan Tampil</label>
+                            <input type="number" name="urutan" class="form-control" value="1" min="1">
+                            <small class="form-text text-muted">Angka kecil tampil paling atas.</small>
                         </div>
                     </div>
                     
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i> Simpan FAQ</button>
+                        <button type="submit" class="btn btn-save btn-success"><i class="fas fa-save mr-1"></i> Simpan FAQ</button>
                     </div>
                 </form>
             </div>
@@ -324,20 +287,9 @@ try {
                             <textarea name="jawaban" id="edit_jawaban" class="form-control" rows="4" required></textarea>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Target Unit <span class="text-danger">*</span></label>
-                                <select name="unit_akses" id="edit_unit" class="form-control" required>
-                                    <option value="all">Semua Unit (Umum)</option>
-                                    <option value="ra">RA (Raudhatul Athfal)</option>
-                                    <option value="mi">MI (Madrasah Ibtidaiyah)</option>
-                                    <option value="smpi">SMPI (SMP Islam)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Urutan Tampil</label>
-                                <input type="number" name="urutan" id="edit_urutan" class="form-control" min="1">
-                            </div>
+                        <div class="form-group">
+                            <label class="font-weight-bold">Urutan Tampil</label>
+                            <input type="number" name="urutan" id="edit_urutan" class="form-control" min="1">
                         </div>
                     </div>
                     
@@ -392,13 +344,11 @@ try {
                 const id         = $(this).data('id');
                 const pertanyaan = $(this).data('pertanyaan');
                 const jawaban    = $(this).data('jawaban');
-                const unit       = $(this).data('unit');
                 const urutan     = $(this).data('urutan');
 
                 $('#edit_id').val(id);
                 $('#edit_pertanyaan').val(pertanyaan);
                 $('#edit_jawaban').val(jawaban);
-                $('#edit_unit').val(unit);
                 $('#edit_urutan').val(urutan);
 
                 $('#modalEdit').modal('show');

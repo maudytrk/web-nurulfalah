@@ -60,12 +60,13 @@ switch ($action) {
     // ACTION 1: TAMBAH DATA (INSERT)
     // ==========================================
     case 'tambah':
-        $judul      = trim($_POST['judul'] ?? '');
-        $tanggal    = trim($_POST['tanggal'] ?? date('Y-m-d'));
-        $unit_akses = trim($_POST['unit_akses'] ?? '');
-        $isi        = trim($_POST['isi'] ?? '');
+        $judul          = trim($_POST['judul'] ?? '');
+        $tanggal        = trim($_POST['tanggal'] ?? date('Y-m-d'));
+        $target_unit    = trim($_POST['target_unit'] ?? 'Yayasan');
+        $isi_pengumuman = trim($_POST['isi_pengumuman'] ?? '');
+        $id_user        = (int)($_SESSION['admin_id'] ?? 1);
 
-        if (empty($judul) || empty($unit_akses) || empty($isi)) {
+        if (empty($judul) || empty($target_unit) || empty($isi_pengumuman)) {
             $_SESSION['error'] = "Judul, Target Unit, dan Isi Pengumuman wajib diisi!";
             header("Location: pengumuman_tambah.php");
             exit;
@@ -82,13 +83,14 @@ switch ($action) {
         $nama_file = $upload_result['filename'];
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO pengumuman (judul, unit_akses, isi, file_lampiran, created_at) VALUES (:judul, :unit_akses, :isi, :file_lampiran, :created_at)");
+            $stmt = $pdo->prepare("INSERT INTO pengumuman (judul, isi_pengumuman, tanggal_post, target_unit, file_lampiran, id_user) VALUES (:judul, :isi_pengumuman, :tanggal_post, :target_unit, :file_lampiran, :id_user)");
             $stmt->execute([
-                ':judul'         => $judul,
-                ':unit_akses'    => $unit_akses,
-                ':isi'           => $isi,
-                ':file_lampiran' => $nama_file,
-                ':created_at'    => $tanggal . ' ' . date('H:i:s')
+                ':judul'          => $judul,
+                ':isi_pengumuman' => $isi_pengumuman,
+                ':tanggal_post'   => $tanggal,
+                ':target_unit'    => $target_unit,
+                ':file_lampiran'  => $nama_file,
+                ':id_user'        => $id_user
             ]);
 
             $_SESSION['success'] = "Pengumuman baru berhasil diterbitkan!";
@@ -103,13 +105,13 @@ switch ($action) {
     // ACTION 2: EDIT DATA (UPDATE)
     // ==========================================
     case 'edit':
-        $id         = (int)($_POST['id'] ?? 0);
-        $judul      = trim($_POST['judul'] ?? '');
-        $tanggal    = trim($_POST['tanggal'] ?? date('Y-m-d'));
-        $unit_akses = trim($_POST['unit_akses'] ?? '');
-        $isi        = trim($_POST['isi'] ?? '');
+        $id             = (int)($_POST['id'] ?? 0);
+        $judul          = trim($_POST['judul'] ?? '');
+        $tanggal        = trim($_POST['tanggal'] ?? date('Y-m-d'));
+        $target_unit    = trim($_POST['target_unit'] ?? 'Yayasan');
+        $isi_pengumuman = trim($_POST['isi_pengumuman'] ?? '');
 
-        if ($id <= 0 || empty($judul) || empty($unit_akses) || empty($isi)) {
+        if ($id <= 0 || empty($judul) || empty($target_unit) || empty($isi_pengumuman)) {
             $_SESSION['error'] = "Data tidak valid atau kolom wajib masih kosong!";
             header("Location: pengumuman.php");
             exit;
@@ -117,7 +119,7 @@ switch ($action) {
 
         try {
             // Cek file lama
-            $stmt_old = $pdo->prepare("SELECT file_lampiran, created_at FROM pengumuman WHERE id = :id");
+            $stmt_old = $pdo->prepare("SELECT file_lampiran FROM pengumuman WHERE id = :id");
             $stmt_old->execute([':id' => $id]);
             $old_data = $stmt_old->fetch();
 
@@ -147,17 +149,14 @@ switch ($action) {
                 $nama_file = $upload_result['filename'];
             }
 
-            $time_part = date('H:i:s', strtotime($old_data['created_at']));
-            $created_at = $tanggal . ' ' . $time_part;
-
-            $stmt_update = $pdo->prepare("UPDATE pengumuman SET judul = :judul, unit_akses = :unit_akses, isi = :isi, file_lampiran = :file_lampiran, created_at = :created_at WHERE id = :id");
+            $stmt_update = $pdo->prepare("UPDATE pengumuman SET judul = :judul, target_unit = :target_unit, isi_pengumuman = :isi_pengumuman, file_lampiran = :file_lampiran, tanggal_post = :tanggal_post WHERE id = :id");
             $stmt_update->execute([
-                ':judul'         => $judul,
-                ':unit_akses'    => $unit_akses,
-                ':isi'           => $isi,
-                ':file_lampiran' => $nama_file,
-                ':created_at'    => $created_at,
-                ':id'            => $id
+                ':judul'          => $judul,
+                ':target_unit'    => $target_unit,
+                ':isi_pengumuman' => $isi_pengumuman,
+                ':file_lampiran'  => $nama_file,
+                ':tanggal_post'   => $tanggal,
+                ':id'             => $id
             ]);
 
             $_SESSION['success'] = "Pengumuman berhasil diperbarui!";

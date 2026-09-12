@@ -27,9 +27,13 @@ $requested_file = trim($_GET['file']);
 $safe_filename = basename($requested_file);
 
 // 4. Tentukan folder lokasi berkas fisik disimpan di server
-// Folder ini harus berada di C:\xampp\htdocs\web-nurulfalah\uploads\
 $upload_dir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
 $file_path  = $upload_dir . $safe_filename;
+
+// Cek folder berkas jika tidak ditemukan di root uploads/
+if (!file_exists($file_path)) {
+    $file_path = $upload_dir . 'berkas' . DIRECTORY_SEPARATOR . $safe_filename;
+}
 
 // 5. Validasi: Periksa apakah file fisik benar-benar ada di folder uploads/
 if (!file_exists($file_path)) {

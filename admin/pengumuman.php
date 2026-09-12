@@ -18,7 +18,7 @@ require_once '../koneksi.php';
 
 // 3. Ambil Semua Data Pengumuman dari Database
 try {
-    $stmt = $pdo->query("SELECT * FROM pengumuman ORDER BY created_at DESC");
+    $stmt = $pdo->query("SELECT * FROM pengumuman ORDER BY tanggal_post DESC, id DESC");
     $daftar_pengumuman = $stmt->fetchAll();
 } catch (PDOException $e) {
     $daftar_pengumuman = [];
@@ -187,9 +187,9 @@ try {
                                                 <td class="text-center"><?= $no++; ?></td>
                                                 <td class="font-weight-bold text-dark"><?= htmlspecialchars($row['judul']); ?></td>
                                                 <td>
-                                                    <span class="badge badge-info p-2"><?= strtoupper(htmlspecialchars($row['unit_akses'])); ?></span>
+                                                    <span class="badge badge-info p-2"><?= htmlspecialchars($row['target_unit']); ?></span>
                                                 </td>
-                                                <td><?= nl2br(htmlspecialchars(substr($row['isi'], 0, 90))) . (strlen($row['isi']) > 90 ? '...' : ''); ?></td>
+                                                <td><?= nl2br(htmlspecialchars(substr($row['isi_pengumuman'], 0, 90))) . (strlen($row['isi_pengumuman']) > 90 ? '...' : ''); ?></td>
                                                 <td class="text-center">
                                                     <?php if (!empty($row['file_lampiran'])): ?>
                                                         <a href="../uploads/pengumuman/<?= htmlspecialchars($row['file_lampiran']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
@@ -199,15 +199,15 @@ try {
                                                         <span class="text-muted font-italic" style="font-size: 0.85rem;">Tidak ada</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td><?= date('d M Y, H:i', strtotime($row['created_at'])); ?></td>
+                                                <td><?= date('d M Y', strtotime($row['tanggal_post'])); ?></td>
                                                 <td class="text-center">
                                                     <!-- Tombol Edit Modal -->
                                                     <button class="btn btn-warning btn-sm btn-edit" 
                                                             data-id="<?= $row['id']; ?>"
                                                             data-judul="<?= htmlspecialchars($row['judul']); ?>"
-                                                            data-unit="<?= htmlspecialchars($row['unit_akses']); ?>"
-                                                            data-tanggal="<?= date('Y-m-d', strtotime($row['created_at'])); ?>"
-                                                            data-isi="<?= htmlspecialchars($row['isi']); ?>"
+                                                            data-unit="<?= htmlspecialchars($row['target_unit']); ?>"
+                                                            data-tanggal="<?= date('Y-m-d', strtotime($row['tanggal_post'])); ?>"
+                                                            data-isi="<?= htmlspecialchars($row['isi_pengumuman']); ?>"
                                                             data-file="<?= htmlspecialchars($row['file_lampiran'] ?? ''); ?>">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </button>
@@ -269,18 +269,18 @@ try {
                             </div>
                             <div class="col-md-6 form-group">
                                 <label class="font-weight-bold">Target Unit / Akses</label>
-                                <select name="unit_akses" id="edit_unit" class="form-control" required>
-                                    <option value="all">Semua Unit (Umum)</option>
-                                    <option value="ra">RA (Raudhatul Athfal)</option>
-                                    <option value="mi">MI (Madrasah Ibtidaiyah)</option>
-                                    <option value="smpi">SMPI (SMP Islam)</option>
+                                <select name="target_unit" id="edit_unit" class="form-control" required>
+                                    <option value="Yayasan">Yayasan / Semua Unit</option>
+                                    <option value="RA">RA (Raudhatul Athfal)</option>
+                                    <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                                    <option value="SMPI">SMPI (SMP Islam)</option>
                                 </select>
                             </div>
                         </div>
                         
                         <div class="form-group">
                             <label class="font-weight-bold">Isi Pengumuman</label>
-                            <textarea name="isi" id="edit_isi" class="form-control" rows="5" required></textarea>
+                            <textarea name="isi_pengumuman" id="edit_isi" class="form-control" rows="5" required></textarea>
                         </div>
 
                         <div class="form-group">

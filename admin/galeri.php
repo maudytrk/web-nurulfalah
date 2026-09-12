@@ -17,15 +17,15 @@ if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
 require_once '../koneksi.php';
 
 // 3. Ambil Filter Unit jika ada
-$unit_filter = isset($_GET['unit']) ? trim($_GET['unit']) : 'all';
+$unit_filter = isset($_GET['unit']) ? strtolower(trim($_GET['unit'])) : 'all';
 
 // 4. Query Data Galeri
 try {
     if ($unit_filter !== 'all' && in_array($unit_filter, ['ra', 'mi', 'smpi'])) {
-        $stmt = $pdo->prepare("SELECT * FROM galeri WHERE unit_akses = :unit ORDER BY created_at DESC");
-        $stmt->execute([':unit' => $unit_filter]);
+        $stmt = $pdo->prepare("SELECT * FROM galeri WHERE target_unit = :unit ORDER BY tanggal_unggah DESC");
+        $stmt->execute([':unit' => strtoupper($unit_filter)]);
     } else {
-        $stmt = $pdo->query("SELECT * FROM galeri ORDER BY created_at DESC");
+        $stmt = $pdo->query("SELECT * FROM galeri ORDER BY tanggal_unggah DESC");
     }
     $daftar_galeri = $stmt->fetchAll();
 } catch (PDOException $e) {
@@ -201,7 +201,7 @@ try {
                                             <th width="5%" class="text-center">No</th>
                                             <th width="12%" class="text-center">Gambar</th>
                                             <th>Judul / Nama Kegiatan</th>
-                                            <th width="12%">Kategori</th>
+                                            <th width="15%">Jenis Ekskul</th>
                                             <th width="10%">Target Unit</th>
                                             <th width="15%">Tanggal Unggah</th>
                                             <th width="13%" class="text-center">Aksi</th>
@@ -213,45 +213,41 @@ try {
                                                 <td class="text-center align-middle"><?= $no++; ?></td>
                                                 <td class="text-center align-middle">
                                                     <?php 
-                                                        $gambar_path = "../uploads/galeri/" . htmlspecialchars($row['file_gambar']);
-                                                        if (!empty($row['file_gambar']) && file_exists($gambar_path)): 
+                                                        $gambar_path = "../uploads/galeri/" . htmlspecialchars($row['nama_file_foto']);
+                                                        if (!empty($row['nama_file_foto']) && file_exists($gambar_path)): 
                                                     ?>
                                                         <a href="<?= $gambar_path; ?>" target="_blank">
-                                                            <img src="<?= $gambar_path; ?>" alt="<?= htmlspecialchars($row['judul']); ?>" class="img-preview-thumb">
+                                                            <img src="<?= $gambar_path; ?>" alt="<?= htmlspecialchars($row['judul_kegiatan']); ?>" class="img-preview-thumb">
                                                         </a>
                                                     <?php else: ?>
                                                         <span class="text-muted font-italic" style="font-size: 0.8rem;">Tidak Ada Gambar</span>
                                                     <?php endif; ?>
                                                 </td>
                                                 <td class="align-middle font-weight-bold text-dark">
-                                                    <?= htmlspecialchars($row['judul']); ?>
-                                                    <?php if (!empty($row['keterangan'])): ?>
-                                                        <small class="d-block text-muted font-weight-normal mt-1"><?= htmlspecialchars(substr($row['keterangan'], 0, 80)) . (strlen($row['keterangan']) > 80 ? '...' : ''); ?></small>
-                                                    <?php endif; ?>
+                                                    <?= htmlspecialchars($row['judul_kegiatan']); ?>
                                                 </td>
                                                 <td class="align-middle">
-                                                    <span class="badge badge-secondary p-2"><?= ucfirst(htmlspecialchars($row['kategori'] ?? 'kegiatan')); ?></span>
+                                                    <span class="badge badge-secondary p-2"><?= htmlspecialchars($row['jenis_ekskul'] ?? '-'); ?></span>
                                                 </td>
                                                 <td class="align-middle">
-                                                    <span class="badge badge-info p-2"><?= strtoupper(htmlspecialchars($row['unit_akses'])); ?></span>
+                                                    <span class="badge badge-info p-2"><?= htmlspecialchars($row['target_unit']); ?></span>
                                                 </td>
-                                                <td class="align-middle"><?= date('d M Y, H:i', strtotime($row['created_at'])); ?></td>
+                                                <td class="align-middle"><?= date('d M Y, H:i', strtotime($row['tanggal_unggah'])); ?></td>
                                                 <td class="text-center align-middle">
                                                     <!-- Tombol Edit Modal -->
                                                     <button class="btn btn-warning btn-sm btn-edit" 
                                                             data-id="<?= $row['id']; ?>"
-                                                            data-judul="<?= htmlspecialchars($row['judul']); ?>"
-                                                            data-kategori="<?= htmlspecialchars($row['kategori'] ?? 'kegiatan'); ?>"
-                                                            data-unit="<?= htmlspecialchars($row['unit_akses']); ?>"
-                                                            data-keterangan="<?= htmlspecialchars($row['keterangan'] ?? ''); ?>"
-                                                            data-file="<?= htmlspecialchars($row['file_gambar']); ?>">
+                                                            data-judul="<?= htmlspecialchars($row['judul_kegiatan']); ?>"
+                                                            data-ekskul="<?= htmlspecialchars($row['jenis_ekskul'] ?? ''); ?>"
+                                                            data-unit="<?= htmlspecialchars($row['target_unit']); ?>"
+                                                            data-file="<?= htmlspecialchars($row['nama_file_foto']); ?>">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </button>
                                                     
                                                     <!-- Tombol Hapus Modal -->
                                                     <button class="btn btn-danger btn-sm btn-hapus" 
                                                             data-id="<?= $row['id']; ?>"
-                                                            data-judul="<?= htmlspecialchars($row['judul']); ?>">
+                                                            data-judul="<?= htmlspecialchars($row['judul_kegiatan']); ?>">
                                                         <i class="fas fa-trash"></i> Hapus
                                                     </button>
                                                 </td>
@@ -294,33 +290,22 @@ try {
                     <div class="modal-body">
                         <div class="form-group">
                             <label class="font-weight-bold">Judul / Nama Kegiatan <span class="text-danger">*</span></label>
-                            <input type="text" name="judul" class="form-control" placeholder="Contoh: Latihan Pramuka Rutin / Pentas Seni" required>
+                            <input type="text" name="judul_kegiatan" class="form-control" placeholder="Contoh: Latihan Pramuka Rutin / Pentas Seni" required>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Kategori Konten <span class="text-danger">*</span></label>
-                                <select name="kategori" class="form-control" required>
-                                    <option value="kegiatan">Kegiatan Sekolah / Madrasah</option>
-                                    <option value="ekskul">Ekstrakurikuler</option>
-                                    <option value="fasilitas">Fasilitas / Gedung</option>
-                                    <option value="prestasi">Prestasi Siswa</option>
-                                </select>
+                                <label class="font-weight-bold">Jenis / Nama Ekskul</label>
+                                <input type="text" name="jenis_ekskul" class="form-control" placeholder="Contoh: Pramuka, Tahfidz, Futsal, Marawis">
                             </div>
                             <div class="col-md-6 form-group">
                                 <label class="font-weight-bold">Target Unit <span class="text-danger">*</span></label>
-                                <select name="unit_akses" class="form-control" required>
-                                    <option value="all">Semua Unit (Umum)</option>
-                                    <option value="ra">RA (Raudhatul Athfal)</option>
-                                    <option value="mi">MI (Madrasah Ibtidaiyah)</option>
-                                    <option value="smpi">SMPI (SMP Islam)</option>
+                                <select name="target_unit" class="form-control" required>
+                                    <option value="RA">RA (Raudhatul Athfal)</option>
+                                    <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                                    <option value="SMPI">SMPI (SMP Islam)</option>
                                 </select>
                             </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="font-weight-bold">Keterangan / Deskripsi Singkat</label>
-                            <textarea name="keterangan" class="form-control" rows="3" placeholder="Tuliskan keterangan singkat mengenai dokumentasi foto ini..."></textarea>
                         </div>
 
                         <div class="form-group">
@@ -355,33 +340,22 @@ try {
                     <div class="modal-body">
                         <div class="form-group">
                             <label class="font-weight-bold">Judul / Nama Kegiatan <span class="text-danger">*</span></label>
-                            <input type="text" name="judul" id="edit_judul" class="form-control" required>
+                            <input type="text" name="judul_kegiatan" id="edit_judul" class="form-control" required>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Kategori Konten <span class="text-danger">*</span></label>
-                                <select name="kategori" id="edit_kategori" class="form-control" required>
-                                    <option value="kegiatan">Kegiatan Sekolah / Madrasah</option>
-                                    <option value="ekskul">Ekstrakurikuler</option>
-                                    <option value="fasilitas">Fasilitas / Gedung</option>
-                                    <option value="prestasi">Prestasi Siswa</option>
-                                </select>
+                                <label class="font-weight-bold">Jenis / Nama Ekskul</label>
+                                <input type="text" name="jenis_ekskul" id="edit_ekskul" class="form-control">
                             </div>
                             <div class="col-md-6 form-group">
                                 <label class="font-weight-bold">Target Unit <span class="text-danger">*</span></label>
-                                <select name="unit_akses" id="edit_unit" class="form-control" required>
-                                    <option value="all">Semua Unit (Umum)</option>
-                                    <option value="ra">RA (Raudhatul Athfal)</option>
-                                    <option value="mi">MI (Madrasah Ibtidaiyah)</option>
-                                    <option value="smpi">SMPI (SMP Islam)</option>
+                                <select name="target_unit" id="edit_unit" class="form-control" required>
+                                    <option value="RA">RA (Raudhatul Athfal)</option>
+                                    <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                                    <option value="SMPI">SMPI (SMP Islam)</option>
                                 </select>
                             </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="font-weight-bold">Keterangan / Deskripsi Singkat</label>
-                            <textarea name="keterangan" id="edit_keterangan" class="form-control" rows="3"></textarea>
                         </div>
 
                         <div class="form-group">
@@ -439,18 +413,16 @@ try {
 
             // Populate Modal Edit
             $('.btn-edit').on('click', function() {
-                const id         = $(this).data('id');
-                const judul      = $(this).data('judul');
-                const kategori   = $(this).data('kategori');
-                const unit       = $(this).data('unit');
-                const keterangan = $(this).data('keterangan');
-                const file       = $(this).data('file');
+                const id     = $(this).data('id');
+                const judul  = $(this).data('judul');
+                const ekskul = $(this).data('ekskul');
+                const unit   = $(this).data('unit');
+                const file   = $(this).data('file');
 
                 $('#edit_id').val(id);
                 $('#edit_judul').val(judul);
-                $('#edit_kategori').val(kategori);
+                $('#edit_ekskul').val(ekskul);
                 $('#edit_unit').val(unit);
-                $('#edit_keterangan').val(keterangan);
 
                 if (file !== '') {
                     $('#info_gambar_lama').text('Gambar saat ini: ' + file);

@@ -49,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_login'])) {
                 $_SESSION['admin_name']  = $user['nama_lengkap'] ?? $user['username'];
                 $_SESSION['username']    = $user['username'];
                 $_SESSION['role']        = $user['role'] ?? 'admin';
+                $_SESSION['unit_akses']  = $user['unit_akses'] ?? 'all';
 
                 // Redirect ke Dashboard Admin
                 header("Location: admin/index.php");
