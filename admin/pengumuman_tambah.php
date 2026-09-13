@@ -64,15 +64,22 @@ require_once '../koneksi.php';
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link" href="galeri.php">
                     <i class="fas fa-fw fa-images"></i>
                     <span>Galeri Foto</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link" href="berkas_ppdb.php">
                     <i class="fas fa-fw fa-file-pdf"></i>
                     <span>Berkas PPDB</span>
+                </a>
+            </li>
+            <!-- Nav Item - FAQ & Kontak -->
+            <li class="nav-item">
+                <a class="nav-link" href="faq.php">
+                    <i class="fas fa-fw fa-question-circle"></i>
+                    <span>FAQ PPDB</span>
                 </a>
             </li>
             <hr class="sidebar-divider">
