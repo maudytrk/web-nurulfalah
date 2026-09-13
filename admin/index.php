@@ -134,6 +134,16 @@ try {
 
             <div class="sidebar-heading">Pengaturan</div>
 
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'super_admin'): ?>
+            <!-- Nav Item - Kelola Admin -->
+            <li class="nav-item">
+                <a class="nav-link" href="kelola_admin.php">
+                    <i class="fas fa-fw fa-users-cog"></i>
+                    <span>Kelola Admin</span>
+                </a>
+            </li>
+            <?php endif; ?>
+
             <!-- Nav Item - Logout -->
             <li class="nav-item">
                 <a class="nav-link" href="../logout.php" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem?');">

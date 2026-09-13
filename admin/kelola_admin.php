@@ -1,27 +1,34 @@
 <?php
 /**
- * Halaman Kelola Daftar Pertanyaan & Jawaban FAQ PPDB
+ * Halaman Manajemen Akun Admin / User
  * Portal Informasi PPDB dan KBM YPI Nurul Falah
  * Author: Maudy Tri Kusuma
  */
 
 session_start();
 
-// 1. Proteksi Halaman Admin
+// 1. Proteksi Halaman Admin & Otorisasi Super Admin
 if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
     header("Location: ../login.php");
+    exit;
+}
+
+// Khusus super_admin yang berhak mengelola akun admin
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin') {
+    $_SESSION['error'] = "Akses ditolak! Fitur Kelola Admin hanya dapat diakses oleh Super Admin.";
+    header("Location: index.php");
     exit;
 }
 
 // 2. Panggil Koneksi Database
 require_once '../koneksi.php';
 
-// 3. Query Data FAQ
+// 3. Ambil Semua Data User / Admin dari Database
 try {
-    $stmt = $pdo->query("SELECT * FROM faq_ppdb ORDER BY urutan ASC, id ASC");
-    $daftar_faq = $stmt->fetchAll();
+    $stmt = $pdo->query("SELECT * FROM users ORDER BY role ASC, created_at DESC");
+    $daftar_admin = $stmt->fetchAll();
 } catch (PDOException $e) {
-    $daftar_faq = [];
+    $daftar_admin = [];
 }
 ?>
 <!DOCTYPE html>
@@ -31,7 +38,7 @@ try {
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Manajemen FAQ PPDB - YPI Nurul Falah</title>
+    <title>Kelola Akun Admin - YPI Nurul Falah</title>
 
     <!-- Font Awesome Icons & Google Fonts -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet" type="text/css">
@@ -85,7 +92,7 @@ try {
                     <span>Berkas PPDB</span>
                 </a>
             </li>
-            <li class="nav-item active">
+            <li class="nav-item">
                 <a class="nav-link" href="faq.php">
                     <i class="fas fa-fw fa-question-circle"></i>
                     <span>FAQ PPDB</span>
@@ -93,14 +100,12 @@ try {
             </li>
             <hr class="sidebar-divider">
             <div class="sidebar-heading">Pengaturan</div>
-            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'super_admin'): ?>
-            <li class="nav-item">
+            <li class="nav-item active">
                 <a class="nav-link" href="kelola_admin.php">
                     <i class="fas fa-fw fa-users-cog"></i>
                     <span>Kelola Admin</span>
                 </a>
             </li>
-            <?php endif; ?>
             <li class="nav-item">
                 <a class="nav-link" href="../logout.php" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem?');">
                     <i class="fas fa-fw fa-sign-out-alt text-danger"></i>
@@ -143,10 +148,10 @@ try {
 
                     <!-- Page Heading & Tombol Tambah -->
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800 font-weight-bold">Kelola FAQ PPDB</h1>
+                        <h1 class="h3 mb-0 text-gray-800 font-weight-bold">Manajemen Akun Admin</h1>
                         <button class="btn btn-success btn-icon-split shadow-sm" data-toggle="modal" data-target="#modalTambah">
-                            <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
-                            <span class="text">Tambah Pertanyaan Baru</span>
+                            <span class="icon text-white-50"><i class="fas fa-user-plus"></i></span>
+                            <span class="text">Tambah Admin Baru</span>
                         </button>
                     </div>
 
@@ -167,46 +172,69 @@ try {
                         <?php unset($_SESSION['error']); ?>
                     <?php endif; ?>
 
-                    <!-- DataTables FAQ -->
+                    <!-- DataTables Admin -->
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 bg-white">
-                            <h6 class="m-0 font-weight-bold text-islamic">Daftar Pertanyaan & Jawaban FAQ</h6>
+                            <h6 class="m-0 font-weight-bold text-islamic">Daftar Pengguna Panel Admin</h6>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <thead>
                                         <tr class="bg-light">
-                                            <th width="8%" class="text-center">Urutan</th>
-                                            <th width="35%">Pertanyaan</th>
-                                            <th>Jawaban</th>
+                                            <th width="5%" class="text-center">No</th>
+                                            <th>Username</th>
+                                            <th>Nama Lengkap</th>
+                                            <th width="15%">Role Hak Akses</th>
+                                            <th width="12%">Unit Akses</th>
+                                            <th width="15%">Tanggal Dibuat</th>
                                             <th width="15%" class="text-center">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($daftar_faq as $row): ?>
+                                        <?php $no = 1; foreach ($daftar_admin as $row): ?>
                                             <tr>
-                                                <td class="text-center align-middle font-weight-bold"><?= (int)$row['urutan']; ?></td>
+                                                <td class="text-center align-middle"><?= $no++; ?></td>
                                                 <td class="align-middle font-weight-bold text-dark">
-                                                    <?= htmlspecialchars($row['pertanyaan']); ?>
+                                                    <?= htmlspecialchars($row['username']); ?>
                                                 </td>
                                                 <td class="align-middle">
-                                                    <?= nl2br(htmlspecialchars($row['jawaban'])); ?>
+                                                    <?= htmlspecialchars($row['nama_lengkap']); ?>
                                                 </td>
+                                                <td class="align-middle">
+                                                    <?php if ($row['role'] === 'super_admin'): ?>
+                                                        <span class="badge badge-success p-2"><i class="fas fa-shield-alt mr-1"></i>Super Admin</span>
+                                                    <?php else: ?>
+                                                        <span class="badge badge-info p-2"><i class="fas fa-user-tag mr-1"></i>Admin Unit</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="align-middle">
+                                                    <span class="badge badge-secondary p-2"><?= htmlspecialchars($row['unit_akses'] === 'all' ? 'Semua Unit' : $row['unit_akses']); ?></span>
+                                                </td>
+                                                <td class="align-middle"><?= date('d M Y, H:i', strtotime($row['created_at'])); ?></td>
                                                 <td class="text-center align-middle">
+                                                    <!-- Tombol Edit Modal -->
                                                     <button class="btn btn-warning btn-sm btn-edit" 
                                                             data-id="<?= $row['id']; ?>"
-                                                            data-pertanyaan="<?= htmlspecialchars($row['pertanyaan']); ?>"
-                                                            data-jawaban="<?= htmlspecialchars($row['jawaban']); ?>"
-                                                            data-urutan="<?= (int)$row['urutan']; ?>">
+                                                            data-username="<?= htmlspecialchars($row['username']); ?>"
+                                                            data-nama="<?= htmlspecialchars($row['nama_lengkap']); ?>"
+                                                            data-role="<?= htmlspecialchars($row['role']); ?>"
+                                                            data-unit="<?= htmlspecialchars($row['unit_akses']); ?>">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </button>
                                                     
-                                                    <button class="btn btn-danger btn-sm btn-hapus" 
-                                                            data-id="<?= $row['id']; ?>"
-                                                            data-pertanyaan="<?= htmlspecialchars($row['pertanyaan']); ?>">
-                                                        <i class="fas fa-trash"></i> Hapus
-                                                    </button>
+                                                    <!-- Tombol Hapus Modal -->
+                                                    <?php if ((int)$row['id'] !== (int)$_SESSION['admin_id']): ?>
+                                                        <button class="btn btn-danger btn-sm btn-hapus" 
+                                                                data-id="<?= $row['id']; ?>"
+                                                                data-username="<?= htmlspecialchars($row['username']); ?>">
+                                                            <i class="fas fa-trash"></i> Hapus
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button class="btn btn-secondary btn-sm" disabled title="Tidak dapat menghapus akun sendiri yang sedang aktif">
+                                                            <i class="fas fa-lock"></i> Aktif
+                                                        </button>
+                                                    <?php endif; ?>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -232,72 +260,113 @@ try {
         </div>
     </div>
 
-    <!-- MODAL TAMBAH FAQ -->
+    <!-- MODAL TAMBAH ADMIN -->
     <div class="modal fade" id="modalTambah" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
-                <form action="faq_proses.php" method="POST">
+                <form action="admin_proses.php" method="POST">
                     <input type="hidden" name="action" value="tambah">
                     
                     <div class="modal-header bg-success text-white">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-question-circle mr-2"></i>Tambah Pertanyaan FAQ Baru</h5>
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-user-plus mr-2"></i>Tambah Akun Admin Baru</h5>
                         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                     </div>
                     
                     <div class="modal-body">
-                        <div class="form-group">
-                            <label class="font-weight-bold">Pertanyaan <span class="text-danger">*</span></label>
-                            <input type="text" name="pertanyaan" class="form-control" placeholder="Contoh: Kapan pendaftaran PPDB gelombang 1 dibuka?" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="font-weight-bold">Jawaban <span class="text-danger">*</span></label>
-                            <textarea name="jawaban" class="form-control" rows="4" placeholder="Tuliskan penjelasan jawaban secara lengkap..." required></textarea>
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Username <span class="text-danger">*</span></label>
+                                <input type="text" name="username" class="form-control" placeholder="Contoh: admin_mi" required>
+                                <small class="form-text text-muted">Username digunakan untuk login ke sistem.</small>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Password <span class="text-danger">*</span></label>
+                                <input type="password" name="password" class="form-control" placeholder="Masukkan password..." required>
+                                <small class="form-text text-muted">Password akan dienkripsi secara aman (Password Hash BCRYPT).</small>
+                            </div>
                         </div>
 
                         <div class="form-group">
-                            <label class="font-weight-bold">Urutan Tampil</label>
-                            <input type="number" name="urutan" class="form-control" value="1" min="1">
-                            <small class="form-text text-muted">Angka kecil tampil paling atas.</small>
+                            <label class="font-weight-bold">Nama Lengkap Pengguna <span class="text-danger">*</span></label>
+                            <input type="text" name="nama_lengkap" class="form-control" placeholder="Contoh: Ahmad Fauzi, S.Pd." required>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Role Hak Akses <span class="text-danger">*</span></label>
+                                <select name="role" class="form-control" required>
+                                    <option value="admin_unit">Admin Unit</option>
+                                    <option value="super_admin">Super Admin (Akses Penuh)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Unit Akses <span class="text-danger">*</span></label>
+                                <select name="unit_akses" class="form-control" required>
+                                    <option value="all">Semua Unit (Yayasan / General)</option>
+                                    <option value="RA">RA (Raudhatul Athfal)</option>
+                                    <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                                    <option value="SMPI">SMPI (SMP Islam)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-save btn-success"><i class="fas fa-save mr-1"></i> Simpan FAQ</button>
+                        <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i> Simpan Akun Admin</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- MODAL EDIT FAQ -->
+    <!-- MODAL EDIT ADMIN -->
     <div class="modal fade" id="modalEdit" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
-                <form action="faq_proses.php" method="POST">
+                <form action="admin_proses.php" method="POST">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="id" id="edit_id">
                     
                     <div class="modal-header bg-warning text-white">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-2"></i>Edit Data FAQ</h5>
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-user-edit mr-2"></i>Edit Data Akun Admin</h5>
                         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                     </div>
                     
                     <div class="modal-body">
-                        <div class="form-group">
-                            <label class="font-weight-bold">Pertanyaan <span class="text-danger">*</span></label>
-                            <input type="text" name="pertanyaan" id="edit_pertanyaan" class="form-control" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="font-weight-bold">Jawaban <span class="text-danger">*</span></label>
-                            <textarea name="jawaban" id="edit_jawaban" class="form-control" rows="4" required></textarea>
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Username <span class="text-danger">*</span></label>
+                                <input type="text" name="username" id="edit_username" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Ganti Password <small class="text-muted">(Biarkan kosong jika tidak diubah)</small></label>
+                                <input type="password" name="password" class="form-control" placeholder="Password baru...">
+                            </div>
                         </div>
 
                         <div class="form-group">
-                            <label class="font-weight-bold">Urutan Tampil</label>
-                            <input type="number" name="urutan" id="edit_urutan" class="form-control" min="1">
+                            <label class="font-weight-bold">Nama Lengkap Pengguna <span class="text-danger">*</span></label>
+                            <input type="text" name="nama_lengkap" id="edit_nama" class="form-control" required>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Role Hak Akses <span class="text-danger">*</span></label>
+                                <select name="role" id="edit_role" class="form-control" required>
+                                    <option value="admin_unit">Admin Unit</option>
+                                    <option value="super_admin">Super Admin (Akses Penuh)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Unit Akses <span class="text-danger">*</span></label>
+                                <select name="unit_akses" id="edit_unit" class="form-control" required>
+                                    <option value="all">Semua Unit (Yayasan / General)</option>
+                                    <option value="RA">RA (Raudhatul Athfal)</option>
+                                    <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                                    <option value="SMPI">SMPI (SMP Islam)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
@@ -310,26 +379,26 @@ try {
         </div>
     </div>
 
-    <!-- MODAL HAPUS FAQ -->
+    <!-- MODAL HAPUS ADMIN -->
     <div class="modal fade" id="modalHapus" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <form action="faq_proses.php" method="POST">
+                <form action="admin_proses.php" method="POST">
                     <input type="hidden" name="action" value="hapus">
                     <input type="hidden" name="id" id="hapus_id">
                     
                     <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-exclamation-triangle mr-2"></i>Konfirmasi Hapus FAQ</h5>
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-exclamation-triangle mr-2"></i>Konfirmasi Hapus Admin</h5>
                         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                     </div>
                     
                     <div class="modal-body">
-                        Apakah Anda yakin ingin menghapus FAQ <strong id="hapus_pertanyaan"></strong>?
+                        Apakah Anda yakin ingin menghapus akun admin <strong id="hapus_username"></strong>? Pengguna tersebut tidak akan bisa login kembali ke sistem.
                     </div>
                     
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-danger"><i class="fas fa-trash mr-1"></i> Ya, Hapus FAQ</button>
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-user-minus mr-1"></i> Ya, Hapus Akun</button>
                     </div>
                 </form>
             </div>
@@ -349,26 +418,28 @@ try {
 
             // Populate Modal Edit
             $('.btn-edit').on('click', function() {
-                const id         = $(this).data('id');
-                const pertanyaan = $(this).data('pertanyaan');
-                const jawaban    = $(this).data('jawaban');
-                const urutan     = $(this).data('urutan');
+                const id       = $(this).data('id');
+                const username = $(this).data('username');
+                const nama     = $(this).data('nama');
+                const role     = $(this).data('role');
+                const unit     = $(this).data('unit');
 
                 $('#edit_id').val(id);
-                $('#edit_pertanyaan').val(pertanyaan);
-                $('#edit_jawaban').val(jawaban);
-                $('#edit_urutan').val(urutan);
+                $('#edit_username').val(username);
+                $('#edit_nama').val(nama);
+                $('#edit_role').val(role);
+                $('#edit_unit').val(unit);
 
                 $('#modalEdit').modal('show');
             });
 
             // Populate Modal Hapus
             $('.btn-hapus').on('click', function() {
-                const id         = $(this).data('id');
-                const pertanyaan = $(this).data('pertanyaan');
+                const id       = $(this).data('id');
+                const username = $(this).data('username');
 
                 $('#hapus_id').val(id);
-                $('#hapus_pertanyaan').text(pertanyaan);
+                $('#hapus_username').text(username);
 
                 $('#modalHapus').modal('show');
             });
