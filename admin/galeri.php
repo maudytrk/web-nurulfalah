@@ -13,13 +13,21 @@ if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
     exit;
 }
 
-// 2. Panggil Koneksi Database
+// 2. Panggil Koneksi Database & Helpers
 require_once '../koneksi.php';
+require_once '../helpers/auth_helper.php';
+require_once '../helpers/csrf.php';
 
-// 3. Ambil Filter Unit jika ada
-$unit_filter = isset($_GET['unit']) ? strtolower(trim($_GET['unit'])) : 'all';
+check_admin_auth();
 
-// 4. Query Data Galeri
+// 3. Ambil Filter Unit (Dikunci jika Admin Unit)
+if (!is_super_admin() && get_user_unit_access() !== 'all') {
+    $unit_filter = strtolower(get_user_unit_access());
+} else {
+    $unit_filter = isset($_GET['unit']) ? strtolower(trim($_GET['unit'])) : 'all';
+}
+
+// 4. Query Data Galeri (Sesuai Role & Filter)
 try {
     if ($unit_filter !== 'all' && in_array($unit_filter, ['ra', 'mi', 'smpi'])) {
         $stmt = $pdo->prepare("SELECT * FROM galeri WHERE target_unit = :unit ORDER BY tanggal_unggah DESC");
@@ -29,6 +37,7 @@ try {
     }
     $daftar_galeri = $stmt->fetchAll();
 } catch (PDOException $e) {
+    error_log("Fetch Galeri Error: " . $e->getMessage());
     $daftar_galeri = [];
 }
 ?>
@@ -288,6 +297,7 @@ try {
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <form action="galeri_proses.php" method="POST" enctype="multipart/form-data">
+                    <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="tambah">
                     
                     <div class="modal-header bg-success text-white">
@@ -337,6 +347,7 @@ try {
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <form action="galeri_proses.php" method="POST" enctype="multipart/form-data">
+                    <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="id" id="edit_id">
                     
@@ -387,6 +398,7 @@ try {
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <form action="galeri_proses.php" method="POST">
+                    <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="hapus">
                     <input type="hidden" name="id" id="hapus_id">
                     

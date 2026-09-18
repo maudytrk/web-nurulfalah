@@ -1,24 +1,37 @@
 <?php
 /**
- * Halaman Form Input Pengumuman Baru
+ * Halaman Pengelolaan Profil Sekolah (Sejarah, Visi, Misi, Fasilitas, & Profil Unit)
  * Portal Informasi PPDB dan KBM YPI Nurul Falah
- * Author: Maudy Tri Kusuma
  */
 
 session_start();
-
-// 1. Proteksi Halaman Admin
-if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
-    header("Location: ../login.php");
-    exit;
-}
 
 require_once '../koneksi.php';
 require_once '../helpers/auth_helper.php';
 require_once '../helpers/csrf.php';
 
 check_admin_auth();
-$user_unit = get_user_unit_access();
+
+try {
+    $stmt = $pdo->query("SELECT * FROM profil_sekolah WHERE id = 1");
+    $profil = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$profil) {
+        $profil = [
+            'nama_yayasan' => 'YPI Nurul Falah',
+            'sejarah' => '',
+            'visi' => '',
+            'misi' => '',
+            'fasilitas' => '',
+            'profil_ra' => '',
+            'profil_mi' => '',
+            'profil_smpi' => ''
+        ];
+    }
+} catch (PDOException $e) {
+    error_log("Fetch Profil Error: " . $e->getMessage());
+    $profil = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -27,7 +40,7 @@ $user_unit = get_user_unit_access();
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Tambah Pengumuman Baru - YPI Nurul Falah</title>
+    <title>Kelola Profil Sekolah - YPI Nurul Falah</title>
 
     <!-- Font Awesome & Google Fonts -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet" type="text/css">
@@ -44,7 +57,6 @@ $user_unit = get_user_unit_access();
 
 <body id="page-top">
 
-    <!-- Page Wrapper -->
     <div id="wrapper">
 
         <!-- Sidebar -->
@@ -62,10 +74,16 @@ $user_unit = get_user_unit_access();
             </li>
             <hr class="sidebar-divider">
             <div class="sidebar-heading">Manajemen Konten</div>
-            <li class="nav-item active">
+            <li class="nav-item">
                 <a class="nav-link" href="pengumuman.php">
                     <i class="fas fa-fw fa-bullhorn"></i>
                     <span>Pengumuman & KBM</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="kalender.php">
+                    <i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>Kalender Akademik</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -80,7 +98,24 @@ $user_unit = get_user_unit_access();
                     <span>Berkas PPDB</span>
                 </a>
             </li>
-            <!-- Nav Item - FAQ & Kontak -->
+            <li class="nav-item">
+                <a class="nav-link" href="ppdb_info.php">
+                    <i class="fas fa-fw fa-info-circle"></i>
+                    <span>Informasi PPDB</span>
+                </a>
+            </li>
+            <li class="nav-item active">
+                <a class="nav-link" href="profil.php">
+                    <i class="fas fa-fw fa-school"></i>
+                    <span>Profil Sekolah</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="kontak_wa.php">
+                    <i class="fab fa-fw fa-whatsapp"></i>
+                    <span>Kontak WhatsApp</span>
+                </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link" href="faq.php">
                     <i class="fas fa-fw fa-question-circle"></i>
@@ -88,20 +123,26 @@ $user_unit = get_user_unit_access();
                 </a>
             </li>
             <hr class="sidebar-divider">
+            <div class="sidebar-heading">Pengaturan</div>
+            <?php if (is_super_admin()): ?>
             <li class="nav-item">
-                <a class="nav-link" href="../logout.php" onclick="return confirm('Yakin ingin keluar?');">
+                <a class="nav-link" href="kelola_admin.php">
+                    <i class="fas fa-fw fa-users-cog"></i>
+                    <span>Kelola Admin</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <li class="nav-item">
+                <a class="nav-link" href="../logout.php" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem?');">
                     <i class="fas fa-fw fa-sign-out-alt text-danger"></i>
                     <span>Keluar (Logout)</span>
                 </a>
             </li>
         </ul>
-        <!-- End of Sidebar -->
 
-        <!-- Content Wrapper -->
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
 
-                <!-- Topbar Header -->
                 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
                     <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
                         <i class="fa fa-bars text-success"></i>
@@ -121,19 +162,20 @@ $user_unit = get_user_unit_access();
                     </ul>
                 </nav>
 
-                <!-- Begin Page Content -->
                 <div class="container-fluid">
 
-                    <!-- Page Heading -->
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800 font-weight-bold">Form Tambah Pengumuman</h1>
-                        <a href="pengumuman.php" class="btn btn-secondary btn-icon-split shadow-sm">
-                            <span class="icon text-white-50"><i class="fas fa-arrow-left"></i></span>
-                            <span class="text">Kembali ke Daftar</span>
-                        </a>
+                        <h1 class="h3 mb-0 text-gray-800 font-weight-bold">Kelola Informasi Profil Sekolah</h1>
                     </div>
 
-                    <!-- Alert Session jika redirect dari backend gagal -->
+                    <?php if (isset($_SESSION['success'])): ?>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle mr-1"></i> <?= $_SESSION['success']; ?>
+                            <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                        </div>
+                        <?php unset($_SESSION['success']); ?>
+                    <?php endif; ?>
+
                     <?php if (isset($_SESSION['error'])): ?>
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <i class="fas fa-exclamation-triangle mr-1"></i> <?= $_SESSION['error']; ?>
@@ -142,82 +184,79 @@ $user_unit = get_user_unit_access();
                         <?php unset($_SESSION['error']); ?>
                     <?php endif; ?>
 
-                    <!-- Form Input Card Mengarah ke pengumuman_proses.php -->
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 bg-white">
-                            <h6 class="m-0 font-weight-bold text-islamic">Isi Detail Pengumuman Baru</h6>
+                            <h6 class="m-0 font-weight-bold text-islamic">Formulir Informasi Utama Sekolah</h6>
                         </div>
                         <div class="card-body">
-                            <form action="pengumuman_proses.php" method="POST" enctype="multipart/form-data">
+                            <form action="profil_proses.php" method="POST">
                                 <?= csrf_field(); ?>
-                                <input type="hidden" name="action" value="tambah">
-                                
+
                                 <div class="form-group">
-                                    <label class="font-weight-bold text-dark">Judul Pengumuman <span class="text-danger">*</span></label>
-                                    <input type="text" name="judul" class="form-control" placeholder="Contoh: Jadwal Pelaksanaan Ujian Tengah Semester KBM 2026" required>
+                                    <label class="font-weight-bold">Nama Yayasan / Lembaga <span class="text-danger">*</span></label>
+                                    <input type="text" name="nama_yayasan" class="form-control" value="<?= htmlspecialchars($profil['nama_yayasan'] ?? 'YPI Nurul Falah'); ?>" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Sejarah Singkat Sekolah <span class="text-danger">*</span></label>
+                                    <textarea name="sejarah" class="form-control" rows="4" required><?= htmlspecialchars($profil['sejarah'] ?? ''); ?></textarea>
                                 </div>
 
                                 <div class="row">
                                     <div class="col-md-6 form-group">
-                                        <label class="font-weight-bold text-dark">Tanggal Publikasi <span class="text-danger">*</span></label>
-                                        <input type="date" name="tanggal" class="form-control" value="<?= date('Y-m-d'); ?>" required>
+                                        <label class="font-weight-bold">Visi Sekolah <span class="text-danger">*</span></label>
+                                        <textarea name="visi" class="form-control" rows="4" required><?= htmlspecialchars($profil['visi'] ?? ''); ?></textarea>
                                     </div>
-                                     <div class="col-md-6 form-group">
-                                        <label class="font-weight-bold text-dark">Target Unit / Akses <span class="text-danger">*</span></label>
-                                        <select name="target_unit" class="form-control" required>
-                                            <?php if (is_super_admin() || $user_unit === 'all'): ?>
-                                                <option value="">-- Pilih Target Unit --</option>
-                                                <option value="Yayasan">Yayasan / Semua Unit</option>
-                                                <option value="RA">RA (Raudhatul Athfal)</option>
-                                                <option value="MI">MI (Madrasah Ibtidaiyah)</option>
-                                                <option value="SMPI">SMPI (SMP Islam)</option>
-                                            <?php else: ?>
-                                                <option value="<?= htmlspecialchars($user_unit); ?>" selected><?= htmlspecialchars($user_unit); ?></option>
-                                                <option value="Yayasan">Yayasan / Semua Unit</option>
-                                            <?php endif; ?>
-                                        </select>
+                                    <div class="col-md-6 form-group">
+                                        <label class="font-weight-bold">Misi Sekolah <span class="text-danger">*</span> <small class="text-muted">(Gunakan baris baru untuk tiap poin)</small></label>
+                                        <textarea name="misi" class="form-control" rows="4" required><?= htmlspecialchars($profil['misi'] ?? ''); ?></textarea>
                                     </div>
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="font-weight-bold text-dark">Isi Teks Pengumuman <span class="text-danger">*</span></label>
-                                    <textarea name="isi_pengumuman" class="form-control" rows="6" placeholder="Tuliskan detail informasi pengumuman secara rinci..." required></textarea>
+                                    <label class="font-weight-bold">Fasilitas Utama Sekolah <small class="text-muted">(Gunakan baris baru untuk tiap fasilitas)</small></label>
+                                    <textarea name="fasilitas" class="form-control" rows="4"><?= htmlspecialchars($profil['fasilitas'] ?? ''); ?></textarea>
+                                </div>
+
+                                <hr class="my-4">
+                                <h5 class="font-weight-bold text-islamic mb-3"><i class="fas fa-layer-group mr-2"></i>Deskripsi Profil Per Unit</h5>
+
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Deskripsi Profil Unit RA (Raudhatul Athfal)</label>
+                                    <textarea name="profil_ra" class="form-control" rows="3"><?= htmlspecialchars($profil['profil_ra'] ?? ''); ?></textarea>
                                 </div>
 
                                 <div class="form-group">
-                                    <label class="font-weight-bold text-dark">File Lampiran (PDF / Gambar / Doc) <small class="text-muted">(Opsional)</small></label>
-                                    <input type="file" name="file_lampiran" class="form-control-file border p-2 rounded" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                                    <small class="form-text text-muted">Format yang didukung: PDF, JPG, PNG, DOCX. Maksimal 5 MB.</small>
+                                    <label class="font-weight-bold">Deskripsi Profil Unit MI (Madrasah Ibtidaiyah)</label>
+                                    <textarea name="profil_mi" class="form-control" rows="3"><?= htmlspecialchars($profil['profil_mi'] ?? ''); ?></textarea>
                                 </div>
 
-                                <hr class="mt-4">
-
-                                <div class="d-flex justify-content-end">
-                                    <a href="pengumuman.php" class="btn btn-secondary mr-2">Batal</a>
-                                    <button type="submit" class="btn btn-success"><i class="fas fa-paper-plane mr-1"></i> Publikasikan Pengumuman</button>
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Deskripsi Profil Unit SMPI (SMP Islam)</label>
+                                    <textarea name="profil_smpi" class="form-control" rows="3"><?= htmlspecialchars($profil['profil_smpi'] ?? ''); ?></textarea>
                                 </div>
 
+                                <div class="text-right">
+                                    <button type="submit" class="btn btn-success btn-lg px-4 shadow-sm"><i class="fas fa-save mr-2"></i>Simpan Profil Sekolah</button>
+                                </div>
                             </form>
                         </div>
                     </div>
 
                 </div>
-                <!-- /.container-fluid -->
 
             </div>
 
-            <!-- Footer -->
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
-                        <span>Copyright &copy; 2026 Maudy Tri Kusuma - YPI Nurul Falah</span>
+                        <span>&copy; 2026 YPI Nurul Falah. All Rights Reserved.</span>
                     </div>
                 </div>
             </footer>
         </div>
     </div>
 
-    <!-- JS Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>

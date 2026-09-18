@@ -5,10 +5,10 @@
  * Author: Maudy Tri Kusuma
  */
 
-// Tampilkan error jika ada kendala sistem
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// Matikan display_errors pada mode production
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
 
 // Panggil file koneksi database
 require_once 'koneksi.php';
@@ -16,25 +16,41 @@ require_once 'koneksi.php';
 // 1. Ambil Data Berkas PPDB (Formulir & Brosur) dari Database
 try {
     $stmt_berkas = $pdo->query("SELECT * FROM berkas_ppdb ORDER BY target_unit ASC, jenis_berkas ASC");
-    $daftar_berkas = $stmt_berkas->fetchAll();
+    $daftar_berkas = $stmt_berkas->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
+    error_log("Fetch Berkas PPDB Error: " . $e->getMessage());
     $daftar_berkas = [];
 }
 
 // 2. Ambil Data Kontak WA Panitia per Unit
 try {
     $stmt_wa = $pdo->query("SELECT * FROM kontak_wa ORDER BY target_unit ASC");
-    $daftar_wa = $stmt_wa->fetchAll();
+    $daftar_wa = $stmt_wa->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
+    error_log("Fetch Kontak WA Error: " . $e->getMessage());
     $daftar_wa = [];
 }
 
 // 3. Ambil Data FAQ PPDB (Urut Berdasarkan Kolom Urutan)
 try {
     $stmt_faq = $pdo->query("SELECT * FROM faq_ppdb ORDER BY urutan ASC");
-    $daftar_faq = $stmt_faq->fetchAll();
+    $daftar_faq = $stmt_faq->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
+    error_log("Fetch FAQ Error: " . $e->getMessage());
     $daftar_faq = [];
+}
+
+// 4. Ambil Data Informasi PPDB Dinamis per Unit
+try {
+    $stmt_info = $pdo->query("SELECT * FROM ppdb_info");
+    $info_raw = $stmt_info->fetchAll(PDO::FETCH_ASSOC);
+    $ppdb_info = [];
+    foreach ($info_raw as $info) {
+        $ppdb_info[$info['unit']] = $info;
+    }
+} catch (PDOException $e) {
+    error_log("Fetch PPDB Info Error: " . $e->getMessage());
+    $ppdb_info = [];
 }
 ?>
 <!DOCTYPE html>
@@ -210,83 +226,75 @@ try {
                 </li>
             </ul>
 
-            <!-- Isi Konten Tab -->
+            <!-- Isi Konten Tab Dinamis -->
             <div class="tab-content" id="ppdbTabContent">
                 
-                <!-- Tab Unit RA -->
-                <div class="tab-pane fade show active" id="ra-content" role="tabpanel">
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="card card-custom p-4 h-100">
-                                <h4 class="fw-bold text-islamic-green mb-3"><i class="fa-solid fa-file-lines me-2"></i>Syarat Dokumen RA</h4>
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi Kartu Keluarga (KK) - 2 Lembar</li>
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi Akta Kelahiran - 2 Lembar</li>
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi KTP Orang Tua (Ayah & Ibu)</li>
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Pas Foto Calon Siswa 3x4 (4 Lembar)</li>
-                                </ul>
+                <?php 
+                $units = ['RA', 'MI', 'SMPI'];
+                foreach ($units as $idx => $u_code):
+                    $u_data = $ppdb_info[$u_code] ?? null;
+                    $is_active = ($idx === 0) ? 'show active' : '';
+                ?>
+                    <div class="tab-pane fade <?= $is_active; ?>" id="<?= strtolower($u_code); ?>-content" role="tabpanel">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="card card-custom p-4 h-100">
+                                    <h4 class="fw-bold text-islamic-green mb-3"><i class="fa-solid fa-file-lines me-2"></i>Syarat Dokumen Unit <?= $u_code; ?></h4>
+                                    <ul class="list-group list-group-flush mb-3">
+                                        <?php 
+                                        if ($u_data && !empty($u_data['persyaratan'])):
+                                            $syarat_items = array_filter(explode("\n", $u_data['persyaratan']));
+                                            foreach ($syarat_items as $syarat):
+                                        ?>
+                                                <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i><?= htmlspecialchars(trim($syarat)); ?></li>
+                                        <?php 
+                                            endforeach;
+                                        else:
+                                        ?>
+                                            <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi Kartu Keluarga (KK) - 2 Lembar</li>
+                                            <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi Akta Kelahiran - 2 Lembar</li>
+                                            <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Pas Foto Calon Siswa 3x4 (4 Lembar)</li>
+                                        <?php endif; ?>
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card card-custom p-4 h-100 bg-light">
-                                <h4 class="fw-bold text-islamic-green mb-3"><i class="fa-solid fa-circle-info me-2"></i>Informasi Pendaftaran RA</h4>
-                                <p class="small text-muted mb-2"><strong>Fasilitas Seragam:</strong> Seragam Batik, Seragam Olahraga, dan Atribut Muslim.</p>
-                                <p class="small text-muted mb-2"><strong>Jam KBM:</strong> Senin - Jumat (07.30 - 10.30 WIB).</p>
-                                <p class="small text-muted"><strong>Catatan:</strong> Pengisian formulir fisik dapat diunduh di bawah atau diambil langsung di kantor RA.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                            <div class="col-md-6">
+                                <div class="card card-custom p-4 h-100 bg-light">
+                                    <h4 class="fw-bold text-islamic-green mb-3"><i class="fa-solid fa-circle-info me-2"></i>Informasi Pendaftaran Unit <?= $u_code; ?></h4>
+                                    
+                                    <p class="small text-muted mb-2">
+                                        <strong>Gelombang:</strong> <?= htmlspecialchars($u_data['gelombang'] ?? 'Gelombang 1 (Januari - Mei)'); ?>
+                                    </p>
+                                    <p class="small text-muted mb-2">
+                                        <strong>Biaya Form:</strong> <span class="badge bg-success"><?= htmlspecialchars($u_data['biaya_pendaftaran'] ?? 'Hubungi Panitia'); ?></span>
+                                    </p>
+                                    <p class="small text-muted mb-2">
+                                        <strong>Jam KBM:</strong> <?= htmlspecialchars($u_data['jam_kbm'] ?? 'Senin - Jumat'); ?>
+                                    </p>
 
-                <!-- Tab Unit MI -->
-                <div class="tab-pane fade" id="mi-content" role="tabpanel">
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="card card-custom p-4 h-100">
-                                <h4 class="fw-bold text-islamic-green mb-3"><i class="fa-solid fa-file-lines me-2"></i>Syarat Dokumen MI</h4>
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi Kartu Keluarga (KK) - 2 Lembar</li>
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi Akta Kelahiran - 2 Lembar</li>
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi Ijazah / Surat Kelulusan RA/TK (Jika ada)</li>
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Pas Foto Calon Siswa 3x4 (4 Lembar)</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card card-custom p-4 h-100 bg-light">
-                                <h4 class="fw-bold text-islamic-green mb-3"><i class="fa-solid fa-circle-info me-2"></i>Informasi Pendaftaran MI</h4>
-                                <p class="small text-muted mb-2"><strong>Fasilitas Seragam:</strong> Seragam Merah-Putih, Seragam Batik Sekolah, Seragam Pramuka, dan Olahraga.</p>
-                                <p class="small text-muted mb-2"><strong>Jam KBM:</strong> Senin - Sabtu (07.00 - 12.00 WIB).</p>
-                                <p class="small text-muted"><strong>Keunggulan:</strong> Program Tahfidz Juz 30 dan Pembiasaan Sholat Dhuha Berjamaah.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                                    <?php if ($u_data && !empty($u_data['seragam'])): ?>
+                                        <p class="small text-muted mb-2">
+                                            <strong>Seragam Sekolah:</strong> <?= htmlspecialchars(str_replace("\n", ", ", $u_data['seragam'])); ?>
+                                        </p>
+                                    <?php endif; ?>
 
-                <!-- Tab Unit SMPI -->
-                <div class="tab-pane fade" id="smpi-content" role="tabpanel">
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="card card-custom p-4 h-100">
-                                <h4 class="fw-bold text-islamic-green mb-3"><i class="fa-solid fa-file-lines me-2"></i>Syarat Dokumen SMPI</h4>
-                                <ul class="list-group list-group-flush">
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi Ijazah / Surat Kelulusan SD/MI (Legalisir)</li>
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi Kartu Keluarga (KK) & Akta Kelahiran</li>
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Fotokopi NISN (Nomor Induk Siswa Nasional)</li>
-                                    <li class="list-group-item"><i class="fa-solid fa-check text-success me-2"></i>Pas Foto Calon Siswa 3x4 (4 Lembar)</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card card-custom p-4 h-100 bg-light">
-                                <h4 class="fw-bold text-islamic-green mb-3"><i class="fa-solid fa-circle-info me-2"></i>Informasi Pendaftaran SMPI</h4>
-                                <p class="small text-muted mb-2"><strong>Fasilitas Seragam:</strong> Seragam Biru-Putih, Seragam Batik, Seragam Pramuka, dan Olahraga.</p>
-                                <p class="small text-muted mb-2"><strong>Jam KBM:</strong> Senin - Sabtu (07.00 - 13.30 WIB).</p>
-                                <p class="small text-muted"><strong>Keunggulan:</strong> Pembinaan Ekskul Komputer, Seni Qur'an, dan Pramuka.</p>
+                                    <?php if ($u_data && !empty($u_data['keunggulan'])): ?>
+                                        <p class="small text-muted mb-2">
+                                            <strong>Keunggulan:</strong> <?= htmlspecialchars(str_replace("\n", ", ", $u_data['keunggulan'])); ?>
+                                        </p>
+                                    <?php endif; ?>
+
+                                    <?php if ($u_data && !empty($u_data['rincian_biaya'])): ?>
+                                        <div class="p-2 bg-white rounded border border-success mt-2">
+                                            <small class="fw-bold text-islamic-green d-block mb-1">Rincian / Potongan Biaya:</small>
+                                            <small class="text-muted"><?= nl2br(htmlspecialchars($u_data['rincian_biaya'])); ?></small>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                <?php endforeach; ?>
 
             </div>
         </div>
@@ -348,10 +356,20 @@ try {
                         </div>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <!-- Kontak Fallback Default jika DB kosong -->
+                    <!-- Kontak Fallback Default / Placeholder -->
                     <div class="col-md-4">
                         <a href="https://wa.me/6281234567890?text=Assalamu'alaikum,%20saya%20ingin%20bertanya%20mengenai%20PPDB" target="_blank" class="btn btn-whatsapp btn-lg w-100 rounded-pill shadow">
-                            <i class="fa-brands fa-whatsapp fa-lg me-2"></i> Hubungi Panitia PPDB
+                            <i class="fa-brands fa-whatsapp fa-lg me-2"></i> Panitia PPDB RA (0812-3456-7890)
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="https://wa.me/6281234567891?text=Assalamu'alaikum,%20saya%20ingin%20bertanya%20mengenai%20PPDB" target="_blank" class="btn btn-whatsapp btn-lg w-100 rounded-pill shadow">
+                            <i class="fa-brands fa-whatsapp fa-lg me-2"></i> Panitia PPDB MI (0812-3456-7891)
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="https://wa.me/6281234567892?text=Assalamu'alaikum,%20saya%20ingin%20bertanya%20mengenai%20PPDB" target="_blank" class="btn btn-whatsapp btn-lg w-100 rounded-pill shadow">
+                            <i class="fa-brands fa-whatsapp fa-lg me-2"></i> Panitia PPDB SMPI (0812-3456-7892)
                         </a>
                     </div>
                 <?php endif; ?>
@@ -388,7 +406,6 @@ try {
                                 </div>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <!-- Data FAQ Default (Berdasarkan Hasil Wawancara Sekolah) -->
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="h1">
                                     <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#c1">
@@ -398,45 +415,6 @@ try {
                                 <div id="c1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
                                     <div class="accordion-body text-muted">
                                         YPI Nurul Falah menyelenggarakan 3 jenjang pendidikan terpadu yaitu: Raudhatul Athfal (RA/setara TK), Madrasah Ibtidaiyah (MI/setara SD), dan Sekolah Menengah Pertama Islam (SMPI/setara SMP).
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="h2">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c2">
-                                        <i class="fa-solid fa-circle-question me-2 text-success"></i> Berapa estimasi biaya pendaftaran dan apakah ada potongan/diskon khusus?
-                                    </button>
-                                </h2>
-                                <div id="c2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                                    <div class="accordion-body text-muted">
-                                        Rincian biaya pendaftaran, uang pangkal, serta informasi potongan/diskon (seperti diskon pendaftaran awal/gelombang 1 atau pendaftar bersaudara) dapat dilihat pada Brosur PPDB resmi yang dapat diunduh di atas atau dikonfirmasikan ke Panitia via WhatsApp.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="h3">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c3">
-                                        <i class="fa-solid fa-circle-question me-2 text-success"></i> Seragam apa saja yang akan didapatkan oleh calon siswa baru?
-                                    </button>
-                                </h2>
-                                <div id="c3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                                    <div class="accordion-body text-muted">
-                                        Paket seragam meliputi Seragam Utama (Batik/Identitas Yayasan, Seragam Khusus Unit), Seragam Olahraga, dan Seragam Pramuka sesuai aturan jenjang masing-masing.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="h4">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c4">
-                                        <i class="fa-solid fa-circle-question me-2 text-success"></i> Apa saja mata pelajaran unggulan dan kegiatan ekstrakurikuler di sekolah?
-                                    </button>
-                                </h2>
-                                <div id="c4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-                                    <div class="accordion-body text-muted">
-                                        Program unggulan meliputi Tahfidz Al-Qur'an, Pembiasaan Sholat Berjamaah/Dhuha, serta ekstrakurikuler seperti Pramuka, Seni Seni Qur'an/Hadroh, dan Olahraga.
                                     </div>
                                 </div>
                             </div>

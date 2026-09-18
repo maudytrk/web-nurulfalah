@@ -106,6 +106,14 @@ try {
                 </a>
             </li>
 
+            <!-- Nav Item - Kalender Akademik -->
+            <li class="nav-item">
+                <a class="nav-link" href="kalender.php">
+                    <i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>Kalender Akademik</span>
+                </a>
+            </li>
+
             <!-- Nav Item - Galeri -->
             <li class="nav-item">
                 <a class="nav-link" href="galeri.php">
@@ -122,7 +130,31 @@ try {
                 </a>
             </li>
 
-            <!-- Nav Item - FAQ & Kontak -->
+            <!-- Nav Item - Informasi PPDB -->
+            <li class="nav-item">
+                <a class="nav-link" href="ppdb_info.php">
+                    <i class="fas fa-fw fa-info-circle"></i>
+                    <span>Informasi PPDB</span>
+                </a>
+            </li>
+
+            <!-- Nav Item - Profil Sekolah -->
+            <li class="nav-item">
+                <a class="nav-link" href="profil.php">
+                    <i class="fas fa-fw fa-school"></i>
+                    <span>Profil Sekolah</span>
+                </a>
+            </li>
+
+            <!-- Nav Item - Kontak WhatsApp -->
+            <li class="nav-item">
+                <a class="nav-link" href="kontak_wa.php">
+                    <i class="fab fa-fw fa-whatsapp"></i>
+                    <span>Kontak WhatsApp</span>
+                </a>
+            </li>
+
+            <!-- Nav Item - FAQ -->
             <li class="nav-item">
                 <a class="nav-link" href="faq.php">
                     <i class="fas fa-fw fa-question-circle"></i>

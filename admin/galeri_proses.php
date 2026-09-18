@@ -1,93 +1,66 @@
 <?php
 /**
- * Engine Backend CRUD Galeri Foto & Pengelolaan Berkas Gambar Server
- * Portal Informasi PPDB dan KBM YPI Nurul Falah
- * Author: Maudy Tri Kusuma
+ * Backend CRUD Galeri Foto Sekolah & Ekskul
+ * YPI Nurul Falah
  */
 
 session_start();
+require_once '../koneksi.php';
+require_once '../helpers/auth_helper.php';
+require_once '../helpers/csrf.php';
 
-// 1. Proteksi Akses Backend Admin
-if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
-    header("Location: ../login.php");
-    exit;
-}
+check_admin_auth();
 
-// 2. Hanya menerima request via POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: galeri.php");
     exit;
 }
 
-// 3. Panggil Koneksi Database
-require_once '../koneksi.php';
+verify_csrf_token();
 
 $upload_dir = '../uploads/galeri/';
-
-// Helper Function Upload Berkas Gambar
-function uploadGambarGaleri($file, $target_dir) {
-    if (isset($file) && $file['error'] === UPLOAD_ERR_OK) {
-        $file_name = $file['name'];
-        $file_tmp  = $file['tmp_name'];
-        $file_size = $file['size'];
-        $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-
-        $allowed_ext = ['jpg', 'jpeg', 'png', 'webp'];
-
-        // Validasi Ekstensi Gambar
-        if (!in_array($file_ext, $allowed_ext)) {
-            return ['status' => false, 'message' => 'Format berkas tidak diizinkan! Format harus berupa JPG, JPEG, PNG, atau WEBP.'];
-        }
-
-        // Validasi Ukuran Berkas (Maksimal 5MB)
-        if ($file_size > 5 * 1024 * 1024) {
-            return ['status' => false, 'message' => 'Ukuran file gambar terlalu besar! Maksimal 5 MB.'];
-        }
-
-        // Buat direktori jika belum ada
-        if (!is_dir($target_dir)) {
-            mkdir($target_dir, 0777, true);
-        }
-
-        // Generate nama file unik
-        $new_filename = time() . '_' . preg_replace("/[^a-zA-Z0-9.]/", "_", $file_name);
-
-        if (move_uploaded_file($file_tmp, $target_dir . $new_filename)) {
-            return ['status' => true, 'filename' => $new_filename];
-        } else {
-            return ['status' => false, 'message' => 'Gagal mengunggah berkas gambar ke server.'];
-        }
-    }
-    return ['status' => true, 'filename' => null];
-}
-
-$action = $_POST['action'] ?? '';
+$action     = $_POST['action'] ?? '';
 
 switch ($action) {
 
-    // ==========================================
-    // ACTION 1: TAMBAH FOTO (INSERT)
-    // ==========================================
     case 'tambah':
         $judul_kegiatan = trim($_POST['judul_kegiatan'] ?? '');
         $jenis_ekskul   = trim($_POST['jenis_ekskul'] ?? '');
         $target_unit    = trim($_POST['target_unit'] ?? 'RA');
 
-        if (empty($judul_kegiatan) || empty($target_unit) || !isset($_FILES['file_gambar']) || $_FILES['file_gambar']['error'] !== UPLOAD_ERR_OK) {
-            $_SESSION['error'] = "Judul Kegiatan, Target Unit, dan Berkas Gambar wajib diisi!";
+        enforce_unit_access($target_unit, 'galeri.php');
+
+        if (empty($judul_kegiatan) || empty($target_unit)) {
+            $_SESSION['error'] = "Judul Kegiatan dan Target Unit wajib diisi!";
             header("Location: galeri.php");
             exit;
         }
 
-        $upload_result = uploadGambarGaleri($_FILES['file_gambar'], $upload_dir);
-
-        if (!$upload_result['status']) {
-            $_SESSION['error'] = $upload_result['message'];
+        if (!isset($_FILES['file_gambar']) || $_FILES['file_gambar']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['error'] = "Silakan pilih berkas gambar foto kegiatan!";
             header("Location: galeri.php");
             exit;
         }
 
-        $nama_file = $upload_result['filename'];
+        $val = validate_uploaded_file($_FILES['file_gambar'], ['jpg', 'jpeg', 'png', 'webp'], 5);
+        if (!$val[0]) {
+            $_SESSION['error'] = $val[1];
+            header("Location: galeri.php");
+            exit;
+        }
+
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+
+        $ext       = strtolower(pathinfo($_FILES['file_gambar']['name'], PATHINFO_EXTENSION));
+        $nama_file = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+
+        if (!move_uploaded_file($_FILES['file_gambar']['tmp_name'], $upload_dir . $nama_file)) {
+            $_SESSION['error'] = "Gagal mengunggah foto ke server.";
+            header("Location: galeri.php");
+            exit;
+        }
 
         try {
             $stmt = $pdo->prepare("INSERT INTO galeri (judul_kegiatan, nama_file_foto, jenis_ekskul, target_unit, tanggal_unggah) VALUES (:judul_kegiatan, :nama_file_foto, :jenis_ekskul, :target_unit, NOW())");
@@ -100,20 +73,20 @@ switch ($action) {
 
             $_SESSION['success'] = "Foto galeri baru berhasil diunggah!";
         } catch (PDOException $e) {
-            $_SESSION['error'] = "Gagal menyimpan ke database: " . $e->getMessage();
+            error_log("Insert Galeri Error: " . $e->getMessage());
+            $_SESSION['error'] = "Terjadi kesalahan saat menyimpan data galeri ke database.";
         }
 
         header("Location: galeri.php");
         exit;
 
-    // ==========================================
-    // ACTION 2: EDIT FOTO (UPDATE)
-    // ==========================================
     case 'edit':
         $id             = (int)($_POST['id'] ?? 0);
         $judul_kegiatan = trim($_POST['judul_kegiatan'] ?? '');
         $jenis_ekskul   = trim($_POST['jenis_ekskul'] ?? '');
         $target_unit    = trim($_POST['target_unit'] ?? 'RA');
+
+        enforce_unit_access($target_unit, 'galeri.php');
 
         if ($id <= 0 || empty($judul_kegiatan) || empty($target_unit)) {
             $_SESSION['error'] = "Data tidak valid atau kolom wajib masih kosong!";
@@ -122,35 +95,40 @@ switch ($action) {
         }
 
         try {
-            // Ambil data lama
-            $stmt_old = $pdo->prepare("SELECT nama_file_foto FROM galeri WHERE id = :id");
+            $stmt_old = $pdo->prepare("SELECT nama_file_foto, target_unit FROM galeri WHERE id = :id");
             $stmt_old->execute([':id' => $id]);
             $old_data = $stmt_old->fetch();
 
             if (!$old_data) {
-                $_SESSION['error'] = "Data galeri tidak ditemukan!";
+                $_SESSION['error'] = "Data foto galeri tidak ditemukan!";
                 header("Location: galeri.php");
                 exit;
             }
 
+            enforce_unit_access($old_data['target_unit'], 'galeri.php');
             $nama_file = $old_data['nama_file_foto'];
 
-            // Jika ada gambar baru yang diunggah
             if (isset($_FILES['file_gambar']) && $_FILES['file_gambar']['error'] === UPLOAD_ERR_OK) {
-                $upload_result = uploadGambarGaleri($_FILES['file_gambar'], $upload_dir);
-
-                if (!$upload_result['status']) {
-                    $_SESSION['error'] = $upload_result['message'];
+                $val = validate_uploaded_file($_FILES['file_gambar'], ['jpg', 'jpeg', 'png', 'webp'], 5);
+                if (!$val[0]) {
+                    $_SESSION['error'] = $val[1];
                     header("Location: galeri.php");
                     exit;
                 }
 
-                // Hapus berkas gambar lama dari folder server
-                if (!empty($nama_file) && file_exists($upload_dir . $nama_file)) {
-                    unlink($upload_dir . $nama_file);
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
                 }
 
-                $nama_file = $upload_result['filename'];
+                $ext      = strtolower(pathinfo($_FILES['file_gambar']['name'], PATHINFO_EXTENSION));
+                $new_file = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+
+                if (move_uploaded_file($_FILES['file_gambar']['tmp_name'], $upload_dir . $new_file)) {
+                    if (!empty($nama_file) && file_exists($upload_dir . $nama_file)) {
+                        @unlink($upload_dir . $nama_file);
+                    }
+                    $nama_file = $new_file;
+                }
             }
 
             $stmt_update = $pdo->prepare("UPDATE galeri SET judul_kegiatan = :judul_kegiatan, nama_file_foto = :nama_file_foto, jenis_ekskul = :jenis_ekskul, target_unit = :target_unit WHERE id = :id");
@@ -159,45 +137,44 @@ switch ($action) {
                 ':nama_file_foto' => $nama_file,
                 ':jenis_ekskul'   => $jenis_ekskul,
                 ':target_unit'    => $target_unit,
-                ':id'              => $id
+                ':id'             => $id
             ]);
 
-            $_SESSION['success'] = "Data galeri foto berhasil diperbarui!";
+            $_SESSION['success'] = "Data foto galeri berhasil diperbarui!";
         } catch (PDOException $e) {
-            $_SESSION['error'] = "Gagal memperbarui database: " . $e->getMessage();
+            error_log("Update Galeri Error: " . $e->getMessage());
+            $_SESSION['error'] = "Terjadi kesalahan saat memperbarui galeri.";
         }
 
         header("Location: galeri.php");
         exit;
 
-    // ==========================================
-    // ACTION 3: HAPUS FOTO (DELETE)
-    // ==========================================
     case 'hapus':
         $id = (int)($_POST['id'] ?? 0);
 
         if ($id > 0) {
             try {
-                $stmt = $pdo->prepare("SELECT nama_file_foto FROM galeri WHERE id = :id");
+                $stmt = $pdo->prepare("SELECT nama_file_foto, target_unit FROM galeri WHERE id = :id");
                 $stmt->execute([':id' => $id]);
                 $data = $stmt->fetch();
 
                 if ($data) {
-                    // Hapus gambar fisik dari direktori server
+                    enforce_unit_access($data['target_unit'], 'galeri.php');
+
                     if (!empty($data['nama_file_foto']) && file_exists($upload_dir . $data['nama_file_foto'])) {
-                        unlink($upload_dir . $data['nama_file_foto']);
+                        @unlink($upload_dir . $data['nama_file_foto']);
                     }
 
-                    // Hapus baris dari database
                     $stmt_delete = $pdo->prepare("DELETE FROM galeri WHERE id = :id");
                     $stmt_delete->execute([':id' => $id]);
 
-                    $_SESSION['success'] = "Foto galeri berhasil dihapus dari sistem!";
+                    $_SESSION['success'] = "Foto galeri berhasil dihapus!";
                 } else {
-                    $_SESSION['error'] = "Data galeri tidak ditemukan!";
+                    $_SESSION['error'] = "Data foto tidak ditemukan!";
                 }
             } catch (PDOException $e) {
-                $_SESSION['error'] = "Gagal menghapus data: " . $e->getMessage();
+                error_log("Delete Galeri Error: " . $e->getMessage());
+                $_SESSION['error'] = "Terjadi kesalahan saat menghapus foto galeri.";
             }
         } else {
             $_SESSION['error'] = "ID data tidak valid!";

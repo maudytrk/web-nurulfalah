@@ -1,34 +1,27 @@
 <?php
 /**
  * Engine Backend CRUD FAQ PPDB
- * Portal Informasi PPDB dan KBM YPI Nurul Falah
- * Author: Maudy Tri Kusuma
+ * YPI Nurul Falah
  */
 
 session_start();
+require_once '../koneksi.php';
+require_once '../helpers/auth_helper.php';
+require_once '../helpers/csrf.php';
 
-// 1. Proteksi Akses Backend Admin
-if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
-    header("Location: ../login.php");
-    exit;
-}
+check_admin_auth();
 
-// 2. Hanya menerima request via POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: faq.php");
     exit;
 }
 
-// 3. Panggil Koneksi Database
-require_once '../koneksi.php';
+verify_csrf_token();
 
 $action = $_POST['action'] ?? '';
 
 switch ($action) {
 
-    // ==========================================
-    // ACTION 1: TAMBAH FAQ (INSERT)
-    // ==========================================
     case 'tambah':
         $pertanyaan = trim($_POST['pertanyaan'] ?? '');
         $jawaban    = trim($_POST['jawaban'] ?? '');
@@ -48,17 +41,15 @@ switch ($action) {
                 ':urutan'     => $urutan
             ]);
 
-            $_SESSION['success'] = "FAQ baru berhasil ditambahkan!";
+            $_SESSION['success'] = "Pertanyaan FAQ baru berhasil ditambahkan!";
         } catch (PDOException $e) {
-            $_SESSION['error'] = "Gagal menyimpan data ke database: " . $e->getMessage();
+            error_log("Insert FAQ Error: " . $e->getMessage());
+            $_SESSION['error'] = "Terjadi kesalahan saat menyimpan FAQ ke database.";
         }
 
         header("Location: faq.php");
         exit;
 
-    // ==========================================
-    // ACTION 2: EDIT FAQ (UPDATE)
-    // ==========================================
     case 'edit':
         $id         = (int)($_POST['id'] ?? 0);
         $pertanyaan = trim($_POST['pertanyaan'] ?? '');
@@ -77,20 +68,18 @@ switch ($action) {
                 ':pertanyaan' => $pertanyaan,
                 ':jawaban'    => $jawaban,
                 ':urutan'     => $urutan,
-                ':id'          => $id
+                ':id'         => $id
             ]);
 
             $_SESSION['success'] = "Data FAQ berhasil diperbarui!";
         } catch (PDOException $e) {
-            $_SESSION['error'] = "Gagal memperbarui database: " . $e->getMessage();
+            error_log("Update FAQ Error: " . $e->getMessage());
+            $_SESSION['error'] = "Terjadi kesalahan saat memperbarui FAQ.";
         }
 
         header("Location: faq.php");
         exit;
 
-    // ==========================================
-    // ACTION 3: HAPUS FAQ (DELETE)
-    // ==========================================
     case 'hapus':
         $id = (int)($_POST['id'] ?? 0);
 
@@ -99,9 +88,10 @@ switch ($action) {
                 $stmt = $pdo->prepare("DELETE FROM faq_ppdb WHERE id = :id");
                 $stmt->execute([':id' => $id]);
 
-                $_SESSION['success'] = "FAQ berhasil dihapus dari sistem!";
+                $_SESSION['success'] = "Pertanyaan FAQ berhasil dihapus!";
             } catch (PDOException $e) {
-                $_SESSION['error'] = "Gagal menghapus data: " . $e->getMessage();
+                error_log("Delete FAQ Error: " . $e->getMessage());
+                $_SESSION['error'] = "Terjadi kesalahan saat menghapus FAQ.";
             }
         } else {
             $_SESSION['error'] = "ID data tidak valid!";

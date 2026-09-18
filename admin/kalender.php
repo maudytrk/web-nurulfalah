@@ -1,44 +1,35 @@
 <?php
 /**
- * Halaman Manajemen Berkas PPDB (Formulir & Brosur PDF per Unit)
+ * Halaman Management Kalender Akademik & Agenda KBM
  * Portal Informasi PPDB dan KBM YPI Nurul Falah
- * Author: Maudy Tri Kusuma
  */
 
 session_start();
 
-// 1. Proteksi Halaman Admin
-if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
-    header("Location: ../login.php");
-    exit;
-}
-
-// 2. Panggil Koneksi Database & Helpers
 require_once '../koneksi.php';
 require_once '../helpers/auth_helper.php';
 require_once '../helpers/csrf.php';
 
 check_admin_auth();
 
-// 3. Ambil Filter Unit (Dikunci jika Admin Unit)
+// Ambil Filter Unit (Jika Admin Unit, kunci ke unitnya)
 if (!is_super_admin() && get_user_unit_access() !== 'all') {
     $unit_filter = strtolower(get_user_unit_access());
 } else {
     $unit_filter = isset($_GET['unit']) ? strtolower(trim($_GET['unit'])) : 'all';
 }
 
-// 4. Query Data Berkas PPDB
 try {
     if ($unit_filter !== 'all' && in_array($unit_filter, ['ra', 'mi', 'smpi'])) {
-        $stmt = $pdo->prepare("SELECT * FROM berkas_ppdb WHERE target_unit = :unit ORDER BY tanggal_upload DESC");
+        $stmt = $pdo->prepare("SELECT * FROM kalender_akademik WHERE target_unit = :unit OR target_unit = 'Yayasan' ORDER BY tanggal_mulai ASC");
         $stmt->execute([':unit' => strtoupper($unit_filter)]);
     } else {
-        $stmt = $pdo->query("SELECT * FROM berkas_ppdb ORDER BY tanggal_upload DESC");
+        $stmt = $pdo->query("SELECT * FROM kalender_akademik ORDER BY tanggal_mulai ASC");
     }
-    $daftar_berkas = $stmt->fetchAll();
+    $daftar_kalender = $stmt->fetchAll();
 } catch (PDOException $e) {
-    error_log("Fetch Berkas Error: " . $e->getMessage());
-    $daftar_berkas = [];
+    error_log("Fetch Kalender Error: " . $e->getMessage());
+    $daftar_kalender = [];
 }
 ?>
 <!DOCTYPE html>
@@ -48,9 +39,9 @@ try {
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>Manajemen Berkas PPDB - YPI Nurul Falah</title>
+    <title>Kalender Akademik - YPI Nurul Falah</title>
 
-    <!-- Font Awesome Icons & Google Fonts -->
+    <!-- Font Awesome & Google Fonts -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet" type="text/css">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i" rel="stylesheet">
 
@@ -66,7 +57,6 @@ try {
 
 <body id="page-top">
 
-    <!-- Page Wrapper -->
     <div id="wrapper">
 
         <!-- Sidebar -->
@@ -90,19 +80,42 @@ try {
                     <span>Pengumuman & KBM</span>
                 </a>
             </li>
+            <li class="nav-item active">
+                <a class="nav-link" href="kalender.php">
+                    <i class="fas fa-fw fa-calendar-alt"></i>
+                    <span>Kalender Akademik</span>
+                </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link" href="galeri.php">
                     <i class="fas fa-fw fa-images"></i>
                     <span>Galeri Foto</span>
                 </a>
             </li>
-            <li class="nav-item active">
+            <li class="nav-item">
                 <a class="nav-link" href="berkas_ppdb.php">
                     <i class="fas fa-fw fa-file-pdf"></i>
                     <span>Berkas PPDB</span>
                 </a>
             </li>
-            <!-- Nav Item - FAQ & Kontak -->
+            <li class="nav-item">
+                <a class="nav-link" href="ppdb_info.php">
+                    <i class="fas fa-fw fa-info-circle"></i>
+                    <span>Informasi PPDB</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="profil.php">
+                    <i class="fas fa-fw fa-school"></i>
+                    <span>Profil Sekolah</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="kontak_wa.php">
+                    <i class="fab fa-fw fa-whatsapp"></i>
+                    <span>Kontak WhatsApp</span>
+                </a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link" href="faq.php">
                     <i class="fas fa-fw fa-question-circle"></i>
@@ -111,7 +124,7 @@ try {
             </li>
             <hr class="sidebar-divider">
             <div class="sidebar-heading">Pengaturan</div>
-            <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'super_admin'): ?>
+            <?php if (is_super_admin()): ?>
             <li class="nav-item">
                 <a class="nav-link" href="kelola_admin.php">
                     <i class="fas fa-fw fa-users-cog"></i>
@@ -125,14 +138,9 @@ try {
                     <span>Keluar (Logout)</span>
                 </a>
             </li>
-            <hr class="sidebar-divider d-none d-md-block">
-            <div class="text-center d-none d-md-inline">
-                <button class="rounded-circle border-0" id="sidebarToggle"></button>
-            </div>
         </ul>
         <!-- End of Sidebar -->
 
-        <!-- Content Wrapper -->
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
 
@@ -156,19 +164,16 @@ try {
                     </ul>
                 </nav>
 
-                <!-- Main Content -->
                 <div class="container-fluid">
 
-                    <!-- Page Heading & Tombol Tambah -->
                     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                        <h1 class="h3 mb-0 text-gray-800 font-weight-bold">Manajemen Berkas PPDB</h1>
+                        <h1 class="h3 mb-0 text-gray-800 font-weight-bold">Kalender Akademik & Agenda KBM</h1>
                         <button class="btn btn-success btn-icon-split shadow-sm" data-toggle="modal" data-target="#modalTambah">
-                            <span class="icon text-white-50"><i class="fas fa-plus"></i></span>
-                            <span class="text">Unggah Berkas Baru</span>
+                            <span class="icon text-white-50"><i class="fas fa-calendar-plus"></i></span>
+                            <span class="text">Tambah Agenda Akademik</span>
                         </button>
                     </div>
 
-                    <!-- Alert Notifikasi Session -->
                     <?php if (isset($_SESSION['success'])): ?>
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <i class="fas fa-check-circle mr-1"></i> <?= $_SESSION['success']; ?>
@@ -185,81 +190,48 @@ try {
                         <?php unset($_SESSION['error']); ?>
                     <?php endif; ?>
 
-                    <!-- Filter Unit -->
-                    <div class="card shadow mb-4">
-                        <div class="card-body py-3">
-                            <div class="form-inline align-items-center">
-                                <label class="font-weight-bold mr-3 text-dark"><i class="fas fa-filter text-success mr-1"></i> Filter Unit:</label>
-                                <a href="berkas_ppdb.php?unit=all" class="btn btn-sm <?= $unit_filter === 'all' ? 'btn-success' : 'btn-outline-success'; ?> mr-2">Semua Unit</a>
-                                <a href="berkas_ppdb.php?unit=ra" class="btn btn-sm <?= $unit_filter === 'ra' ? 'btn-success' : 'btn-outline-success'; ?> mr-2">RA</a>
-                                <a href="berkas_ppdb.php?unit=mi" class="btn btn-sm <?= $unit_filter === 'mi' ? 'btn-success' : 'btn-outline-success'; ?> mr-2">MI</a>
-                                <a href="berkas_ppdb.php?unit=smpi" class="btn btn-sm <?= $unit_filter === 'smpi' ? 'btn-success' : 'btn-outline-success'; ?>">SMPI</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- DataTables Berkas -->
                     <div class="card shadow mb-4">
                         <div class="card-header py-3 bg-white">
-                            <h6 class="m-0 font-weight-bold text-islamic">Daftar Formulir & Brosur PPDB</h6>
+                            <h6 class="m-0 font-weight-bold text-islamic">Daftar Agenda & Kegiatan Akademik</h6>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                    <thead>
-                                        <tr class="bg-light">
-                                            <th width="5%" class="text-center">No</th>
-                                            <th>Nama Berkas / Dokumen</th>
-                                            <th width="15%">Jenis Berkas</th>
-                                            <th width="12%">Target Unit</th>
-                                            <th width="12%" class="text-center">File PDF</th>
-                                            <th width="15%">Tanggal Unggah</th>
-                                            <th width="13%" class="text-center">Aksi</th>
+                                <table class="table table-bordered table-striped" id="dataTable" width="100%" cellspacing="0">
+                                    <thead class="bg-islamic text-white">
+                                        <tr>
+                                            <th width="5%">No</th>
+                                            <th>Judul Agenda</th>
+                                            <th>Tanggal Mulai</th>
+                                            <th>Tanggal Selesai</th>
+                                            <th>Target Unit</th>
+                                            <th>Keterangan</th>
+                                            <th width="15%">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php $no = 1; foreach ($daftar_berkas as $row): ?>
+                                        <?php $no = 1; foreach ($daftar_kalender as $row): ?>
                                             <tr>
-                                                <td class="text-center align-middle"><?= $no++; ?></td>
-                                                <td class="align-middle font-weight-bold text-dark">
-                                                    <?= htmlspecialchars($row['nama_berkas']); ?>
+                                                <td><?= $no++; ?></td>
+                                                <td class="font-weight-bold"><?= htmlspecialchars($row['judul_agenda']); ?></td>
+                                                <td><?= date('d M Y', strtotime($row['tanggal_mulai'])); ?></td>
+                                                <td><?= !empty($row['tanggal_selesai']) ? date('d M Y', strtotime($row['tanggal_selesai'])) : '-'; ?></td>
+                                                <td>
+                                                    <span class="badge badge-info px-2 py-1"><?= htmlspecialchars($row['target_unit']); ?></span>
                                                 </td>
-                                                <td class="align-middle">
-                                                    <span class="badge badge-secondary p-2"><?= strtoupper(htmlspecialchars($row['jenis_berkas'])); ?></span>
-                                                </td>
-                                                <td class="align-middle">
-                                                    <span class="badge badge-info p-2"><?= htmlspecialchars($row['target_unit']); ?></span>
-                                                </td>
-                                                <td class="text-center align-middle">
-                                                    <?php 
-                                                        $pdf_path = "../uploads/" . htmlspecialchars($row['nama_file']);
-                                                        if (!empty($row['nama_file']) && file_exists($pdf_path)): 
-                                                    ?>
-                                                        <a href="<?= $pdf_path; ?>" target="_blank" class="btn btn-sm btn-outline-danger">
-                                                            <i class="fas fa-file-pdf mr-1"></i> Unduh PDF
-                                                        </a>
-                                                    <?php else: ?>
-                                                        <a href="../download.php?file=<?= urlencode($row['nama_file']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                            <i class="fas fa-download mr-1"></i> Unduh
-                                                        </a>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="align-middle"><?= date('d M Y', strtotime($row['tanggal_upload'])); ?></td>
-                                                <td class="text-center align-middle">
-                                                    <!-- Tombol Edit Modal -->
-                                                    <button class="btn btn-warning btn-sm btn-edit" 
+                                                <td><?= htmlspecialchars($row['keterangan'] ?? '-'); ?></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-warning text-white btn-edit" 
                                                             data-id="<?= $row['id']; ?>"
-                                                            data-nama="<?= htmlspecialchars($row['nama_berkas']); ?>"
-                                                            data-jenis="<?= htmlspecialchars($row['jenis_berkas']); ?>"
-                                                            data-unit="<?= htmlspecialchars($row['target_unit']); ?>"
-                                                            data-file="<?= htmlspecialchars($row['nama_file']); ?>">
+                                                            data-judul="<?= htmlspecialchars($row['judul_agenda']); ?>"
+                                                            data-mulai="<?= $row['tanggal_mulai']; ?>"
+                                                            data-selesai="<?= $row['tanggal_selesai']; ?>"
+                                                            data-unit="<?= $row['target_unit']; ?>"
+                                                            data-keterangan="<?= htmlspecialchars($row['keterangan'] ?? ''); ?>">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </button>
-                                                    
-                                                    <!-- Tombol Hapus Modal -->
-                                                    <button class="btn btn-danger btn-sm btn-hapus" 
+                                                    <button class="btn btn-sm btn-danger btn-hapus"
                                                             data-id="<?= $row['id']; ?>"
-                                                            data-nama="<?= htmlspecialchars($row['nama_berkas']); ?>">
+                                                            data-judul="<?= htmlspecialchars($row['judul_agenda']); ?>">
                                                         <i class="fas fa-trash"></i> Hapus
                                                     </button>
                                                 </td>
@@ -272,11 +244,9 @@ try {
                     </div>
 
                 </div>
-                <!-- /.container-fluid -->
 
             </div>
 
-            <!-- Footer -->
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
@@ -287,104 +257,105 @@ try {
         </div>
     </div>
 
-    <!-- MODAL TAMBAH BERKAS -->
+    <!-- MODAL TAMBAH -->
     <div class="modal fade" id="modalTambah" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
-                <form action="berkas_proses.php" method="POST" enctype="multipart/form-data">
+                <form action="kalender_proses.php" method="POST">
                     <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="tambah">
-                    
                     <div class="modal-header bg-success text-white">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-file-upload mr-2"></i>Unggah Berkas PPDB Baru</h5>
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-plus-circle mr-2"></i>Tambah Agenda Akademik</h5>
                         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                     </div>
-                    
                     <div class="modal-body">
                         <div class="form-group">
-                            <label class="font-weight-bold">Nama Berkas / Dokumen <span class="text-danger">*</span></label>
-                            <input type="text" name="nama_berkas" class="form-control" placeholder="Contoh: Formulir Pendaftaran RA 2026/2027" required>
+                            <label class="font-weight-bold">Judul Agenda <span class="text-danger">*</span></label>
+                            <input type="text" name="judul_agenda" class="form-control" placeholder="Contoh: Pelaksanaan Penilaian Tengah Semester (PTS)" required>
                         </div>
-                        
                         <div class="row">
                             <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Jenis Berkas <span class="text-danger">*</span></label>
-                                <select name="jenis_berkas" class="form-control" required>
-                                    <option value="formulir">Formulir Pendaftaran</option>
-                                    <option value="brosur">Brosur PPDB</option>
-                                </select>
+                                <label class="font-weight-bold">Tanggal Mulai <span class="text-danger">*</span></label>
+                                <input type="date" name="tanggal_mulai" class="form-control" required>
                             </div>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Tanggal Selesai <small class="text-muted">(Opsional)</small></label>
+                                <input type="date" name="tanggal_selesai" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6 form-group">
                                 <label class="font-weight-bold">Target Unit <span class="text-danger">*</span></label>
                                 <select name="target_unit" class="form-control" required>
-                                    <option value="RA">RA (Raudhatul Athfal)</option>
-                                    <option value="MI">MI (Madrasah Ibtidaiyah)</option>
-                                    <option value="SMPI">SMPI (SMP Islam)</option>
+                                    <?php if (is_super_admin() || get_user_unit_access() === 'all'): ?>
+                                        <option value="Yayasan">Yayasan / Semua Unit</option>
+                                        <option value="RA">RA (Raudhatul Athfal)</option>
+                                        <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                                        <option value="SMPI">SMPI (SMP Islam)</option>
+                                    <?php else: ?>
+                                        <option value="<?= htmlspecialchars(get_user_unit_access()); ?>" selected><?= htmlspecialchars(get_user_unit_access()); ?></option>
+                                        <option value="Yayasan">Yayasan / Semua Unit</option>
+                                    <?php endif; ?>
                                 </select>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="font-weight-bold">Pilih Berkas PDF <span class="text-danger">*</span></label>
-                            <input type="file" name="file_pdf" class="form-control-file border p-2 rounded" accept=".pdf" required>
-                            <small class="form-text text-muted">Format berkas khusus PDF. Maksimal ukuran file 10 MB.</small>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Keterangan Tambahan</label>
+                                <input type="text" name="keterangan" class="form-control" placeholder="Contoh: Berlaku untuk seluruh siswa">
+                            </div>
                         </div>
                     </div>
-                    
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success"><i class="fas fa-upload mr-1"></i> Unggah Berkas</button>
+                        <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i> Simpan Agenda</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- MODAL EDIT BERKAS -->
+    <!-- MODAL EDIT -->
     <div class="modal fade" id="modalEdit" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
-                <form action="berkas_proses.php" method="POST" enctype="multipart/form-data">
+                <form action="kalender_proses.php" method="POST">
                     <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="id" id="edit_id">
-                    
                     <div class="modal-header bg-warning text-white">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-2"></i>Edit Data Berkas PPDB</h5>
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-2"></i>Edit Agenda Akademik</h5>
                         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                     </div>
-                    
                     <div class="modal-body">
                         <div class="form-group">
-                            <label class="font-weight-bold">Nama Berkas / Dokumen <span class="text-danger">*</span></label>
-                            <input type="text" name="nama_berkas" id="edit_nama" class="form-control" required>
+                            <label class="font-weight-bold">Judul Agenda <span class="text-danger">*</span></label>
+                            <input type="text" name="judul_agenda" id="edit_judul" class="form-control" required>
                         </div>
-                        
                         <div class="row">
                             <div class="col-md-6 form-group">
-                                <label class="font-weight-bold">Jenis Berkas <span class="text-danger">*</span></label>
-                                <select name="jenis_berkas" id="edit_jenis" class="form-control" required>
-                                    <option value="formulir">Formulir Pendaftaran</option>
-                                    <option value="brosur">Brosur PPDB</option>
-                                </select>
+                                <label class="font-weight-bold">Tanggal Mulai <span class="text-danger">*</span></label>
+                                <input type="date" name="tanggal_mulai" id="edit_mulai" class="form-control" required>
                             </div>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Tanggal Selesai</label>
+                                <input type="date" name="tanggal_selesai" id="edit_selesai" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6 form-group">
                                 <label class="font-weight-bold">Target Unit <span class="text-danger">*</span></label>
                                 <select name="target_unit" id="edit_unit" class="form-control" required>
+                                    <option value="Yayasan">Yayasan / Semua Unit</option>
                                     <option value="RA">RA (Raudhatul Athfal)</option>
                                     <option value="MI">MI (Madrasah Ibtidaiyah)</option>
                                     <option value="SMPI">SMPI (SMP Islam)</option>
                                 </select>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="font-weight-bold">Ganti Berkas PDF <small class="text-muted">(Biarkan kosong jika tidak diganti)</small></label>
-                            <input type="file" name="file_pdf" class="form-control-file border p-2 rounded" accept=".pdf">
-                            <small id="info_pdf_lama" class="form-text text-info mt-1"></small>
+                            <div class="col-md-6 form-group">
+                                <label class="font-weight-bold">Keterangan</label>
+                                <input type="text" name="keterangan" id="edit_keterangan" class="form-control">
+                            </div>
                         </div>
                     </div>
-                    
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
                         <button type="submit" class="btn btn-warning text-white"><i class="fas fa-save mr-1"></i> Simpan Perubahan</button>
@@ -394,34 +365,30 @@ try {
         </div>
     </div>
 
-    <!-- MODAL HAPUS BERKAS -->
+    <!-- MODAL HAPUS -->
     <div class="modal fade" id="modalHapus" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
-                <form action="berkas_proses.php" method="POST">
+                <form action="kalender_proses.php" method="POST">
                     <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="hapus">
                     <input type="hidden" name="id" id="hapus_id">
-                    
                     <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title font-weight-bold"><i class="fas fa-exclamation-triangle mr-2"></i>Konfirmasi Hapus Berkas</h5>
+                        <h5 class="modal-title font-weight-bold"><i class="fas fa-exclamation-triangle mr-2"></i>Konfirmasi Hapus</h5>
                         <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
                     </div>
-                    
                     <div class="modal-body">
-                        Apakah Anda yakin ingin menghapus berkas <strong id="hapus_nama"></strong>? File PDF fisik pada folder penyimpanan juga akan dihapus permanen.
+                        Apakah Anda yakin ingin menghapus agenda <strong id="hapus_judul"></strong>?
                     </div>
-                    
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-danger"><i class="fas fa-trash mr-1"></i> Ya, Hapus Berkas</button>
+                        <button type="submit" class="btn btn-danger"><i class="fas fa-trash mr-1"></i> Hapus</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- JS Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
@@ -430,41 +397,29 @@ try {
 
     <script>
         $(document).ready(function() {
-            $('#dataTable').DataTable();
-
-            // Populate Modal Edit
-            $('.btn-edit').on('click', function() {
-                const id    = $(this).data('id');
-                const nama  = $(this).data('nama');
-                const jenis = $(this).data('jenis');
-                const unit  = $(this).data('unit');
-                const file  = $(this).data('file');
-
-                $('#edit_id').val(id);
-                $('#edit_nama').val(nama);
-                $('#edit_jenis').val(jenis);
-                $('#edit_unit').val(unit);
-
-                if (file !== '') {
-                    $('#info_pdf_lama').text('File PDF saat ini: ' + file);
-                } else {
-                    $('#info_pdf_lama').text('File PDF saat ini: (Tidak ada)');
+            $('#dataTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Indonesian.json"
                 }
+            });
 
+            $('.btn-edit').on('click', function() {
+                $('#edit_id').val($(this).data('id'));
+                $('#edit_judul').val($(this).data('judul'));
+                $('#edit_mulai').val($(this).data('mulai'));
+                $('#edit_selesai').val($(this).data('selesai'));
+                $('#edit_unit').val($(this).data('unit'));
+                $('#edit_keterangan').val($(this).data('keterangan'));
                 $('#modalEdit').modal('show');
             });
 
-            // Populate Modal Hapus
             $('.btn-hapus').on('click', function() {
-                const id   = $(this).data('id');
-                const nama = $(this).data('nama');
-
-                $('#hapus_id').val(id);
-                $('#hapus_nama').text(nama);
-
+                $('#hapus_id').val($(this).data('id'));
+                $('#hapus_judul').text($(this).data('judul'));
                 $('#modalHapus').modal('show');
             });
         });
     </script>
+
 </body>
 </html>

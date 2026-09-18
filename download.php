@@ -5,10 +5,10 @@
  * Author: Maudy Tri Kusuma
  */
 
-// Tampilkan error saat pengembangan jika terjadi kendala
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// Matikan display_errors pada mode production
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
 
 // Panggil file koneksi database (opsional jika ingin mencatat log unduhan di kemudian hari)
 require_once 'koneksi.php';

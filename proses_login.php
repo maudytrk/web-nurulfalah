@@ -31,36 +31,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_login'])) {
         $user = $stmt->fetch();
 
         // Verifikasi keberadaan akun dan kecocokan password
-        if ($user) {
-            $password_valid = false;
+        if ($user && password_verify($password, $user['password'])) {
+            // Buat Session Login Admin
+            session_regenerate_id(true); // Keamanan dari session fixation attack
+            $_SESSION['login_admin'] = true;
+            $_SESSION['admin_id']    = $user['id'];
+            $_SESSION['admin_name']  = $user['nama_lengkap'] ?? $user['username'];
+            $_SESSION['username']    = $user['username'];
+            $_SESSION['role']        = $user['role'] ?? 'admin_unit';
+            $_SESSION['unit_akses']  = $user['unit_akses'] ?? 'all';
 
-            if (password_verify($password, $user['password'])) {
-                $password_valid = true;
-            } elseif ($password === $user['password']) {
-                // Jika di database masih tersimpan plain text
-                $password_valid = true;
-            }
-
-            if ($password_valid) {
-                // Buat Session Login Admin
-                session_regenerate_id(true); // Keamanan dari session fixation attack
-                $_SESSION['login_admin'] = true;
-                $_SESSION['admin_id']    = $user['id'];
-                $_SESSION['admin_name']  = $user['nama_lengkap'] ?? $user['username'];
-                $_SESSION['username']    = $user['username'];
-                $_SESSION['role']        = $user['role'] ?? 'admin';
-                $_SESSION['unit_akses']  = $user['unit_akses'] ?? 'all';
-
-                // Redirect ke Dashboard Admin
-                header("Location: admin/index.php");
-                exit;
-            } else {
-                $_SESSION['error'] = "Password yang Anda masukkan salah!";
-                header("Location: login.php");
-                exit;
-            }
+            // Redirect ke Dashboard Admin
+            header("Location: admin/index.php");
+            exit;
         } else {
-            $_SESSION['error'] = "Username tidak ditemukan!";
+            $_SESSION['error'] = "Username atau password yang Anda masukkan salah!";
             header("Location: login.php");
             exit;
         }

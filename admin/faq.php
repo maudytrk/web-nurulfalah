@@ -13,14 +13,19 @@ if (!isset($_SESSION['login_admin']) || $_SESSION['login_admin'] !== true) {
     exit;
 }
 
-// 2. Panggil Koneksi Database
+// 2. Panggil Koneksi Database & Helpers
 require_once '../koneksi.php';
+require_once '../helpers/auth_helper.php';
+require_once '../helpers/csrf.php';
+
+check_admin_auth();
 
 // 3. Query Data FAQ
 try {
     $stmt = $pdo->query("SELECT * FROM faq_ppdb ORDER BY urutan ASC, id ASC");
     $daftar_faq = $stmt->fetchAll();
 } catch (PDOException $e) {
+    error_log("Fetch FAQ Error: " . $e->getMessage());
     $daftar_faq = [];
 }
 ?>
@@ -237,6 +242,7 @@ try {
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <form action="faq_proses.php" method="POST">
+                    <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="tambah">
                     
                     <div class="modal-header bg-success text-white">
@@ -276,6 +282,7 @@ try {
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <form action="faq_proses.php" method="POST">
+                    <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="id" id="edit_id">
                     
@@ -315,6 +322,7 @@ try {
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <form action="faq_proses.php" method="POST">
+                    <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="hapus">
                     <input type="hidden" name="id" id="hapus_id">
                     

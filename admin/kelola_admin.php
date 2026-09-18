@@ -22,6 +22,11 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'super_admin') {
 
 // 2. Panggil Koneksi Database
 require_once '../koneksi.php';
+require_once '../helpers/auth_helper.php';
+require_once '../helpers/csrf.php';
+
+check_admin_auth();
+enforce_unit_access('all', 'index.php');
 
 // 3. Ambil Semua Data User / Admin dari Database
 try {
@@ -265,6 +270,7 @@ try {
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <form action="admin_proses.php" method="POST">
+                    <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="tambah">
                     
                     <div class="modal-header bg-success text-white">
@@ -325,6 +331,7 @@ try {
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <form action="admin_proses.php" method="POST">
+                    <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="id" id="edit_id">
                     
@@ -384,6 +391,7 @@ try {
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <form action="admin_proses.php" method="POST">
+                    <?= csrf_field(); ?>
                     <input type="hidden" name="action" value="hapus">
                     <input type="hidden" name="id" id="hapus_id">
                     
